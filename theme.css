@@ -350,7 +350,7 @@
     .check-list { display: flex; flex-direction: column; gap: 8px; }
     .check-item {
       display: grid;
-      grid-template-columns: 22px minmax(0, 1fr) auto auto 92px;
+      grid-template-columns: 22px minmax(0, 1fr) 76px minmax(48px, auto) 92px;
       grid-template-areas: "chk name date plan actual";
       align-items: center;
       gap: 8px 8px;
@@ -391,17 +391,19 @@
     .ci-name-field:focus { outline: none; }
     .ci-date-wrap {
       grid-area: date;
+      width: 76px;
       justify-self: center;
-      min-width: 0;
+      flex-shrink: 0;
+      position: relative;
     }
     .ci-date-pill {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
+      width: 76px;
+      box-sizing: border-box;
       margin: 0;
-      padding: 5px 12px;
-      min-width: 72px;
+      padding: 5px 6px;
       border: 1.5px solid var(--border);
       border-radius: 100px;
       background: linear-gradient(180deg, #fff 0%, var(--surface2) 100%);
@@ -409,6 +411,7 @@
       cursor: pointer;
       transition: border-color .15s, box-shadow .15s, background .15s;
       user-select: none;
+      font-family: inherit;
     }
     .ci-date-pill:hover {
       border-color: var(--main-pale);
@@ -430,22 +433,24 @@
       font-size: .68rem;
       font-weight: 700;
       letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
       color: var(--muted);
       white-space: nowrap;
       pointer-events: none;
+      line-height: 1.2;
     }
     .ci-date-pill.has-value .ci-date-text { color: var(--text); }
     .ci-date-input {
       position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      width: 1px;
+      height: 1px;
       margin: 0;
       padding: 0;
       opacity: 0;
-      cursor: pointer;
-      border: none;
-      background: transparent;
+      pointer-events: none;
+      border: 0;
+      clip: rect(0, 0, 0, 0);
+      overflow: hidden;
     }
     .check-item .ci-plan {
       grid-area: plan;
@@ -798,6 +803,7 @@
       }
       .tracker-col .check-item .ci-date-wrap {
         justify-self: start;
+        width: 76px;
       }
       .tracker-col .check-item .ci-check {
         align-self: start;

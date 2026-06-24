@@ -800,20 +800,64 @@ function formatDepositDisplay(iso) {
 }
 
 function syncDatePill(input) {
-  const pill = input.closest('.ci-date-pill');
+  const wrap = input.closest('.ci-date-wrap');
+  const pill = wrap?.querySelector('.ci-date-pill');
   const text = pill?.querySelector('.ci-date-text');
   if (!pill || !text) return;
   text.textContent = formatDepositDisplay(input.value);
   pill.classList.toggle('has-value', !!input.value);
 }
 
+function saveDepositDate(input) {
+  const person = input.dataset.person;
+  if (input.dataset.savId) {
+    patchSavingsLine(person, input.dataset.savId, { deposit: input.value });
+  } else {
+    budgetChecks = setDeposit(budgetChecks, trackerYear, trackerMonth, person, input.dataset.id, input.value);
+  }
+  syncDatePill(input);
+  scheduleSave();
+}
+
+function openDatePicker(wrap) {
+  const input = wrap?.querySelector('.ci-date-input');
+  if (!input) return;
+  if (typeof input.showPicker === 'function') {
+    try {
+      input.showPicker();
+      return;
+    } catch (_) { /* fall through */ }
+  }
+  const pill = wrap.querySelector('.ci-date-pill');
+  const rect = pill?.getBoundingClientRect();
+  const prev = input.style.cssText;
+  input.style.cssText = [
+    'position:fixed',
+    `left:${rect?.left ?? 0}px`,
+    `top:${rect?.top ?? 0}px`,
+    `width:${rect?.width ?? 76}px`,
+    `height:${rect?.height ?? 30}px`,
+    'opacity:0.01',
+    'pointer-events:auto',
+    'z-index:9999',
+    'border:0',
+    'margin:0',
+    'padding:0',
+    'clip:auto',
+    'overflow:visible',
+  ].join(';');
+  input.focus({ preventScroll: true });
+  input.click();
+  setTimeout(() => { input.style.cssText = prev; }, 400);
+}
+
 function renderDepositPill(deposit, attrs) {
   const has = !!deposit;
   return `<div class="ci-date-wrap">
-    <label class="ci-date-pill${has ? ' has-value' : ''}">
+    <button type="button" class="ci-date-pill${has ? ' has-value' : ''}" aria-label="입금일 선택">
       <span class="ci-date-text">${formatDepositDisplay(deposit)}</span>
-      <input type="date" class="ci-date-input" ${attrs} value="${escAttr(deposit || '')}">
-    </label>
+    </button>
+    <input type="date" class="ci-date-input" ${attrs} value="${escAttr(deposit || '')}" tabindex="-1" aria-hidden="true">
   </div>`;
 }
 
@@ -890,8 +934,16 @@ function attachTrackerEvents() {
   const section = document.getElementById('tracker-section');
 
   section.onclick = e => {
+    const datePill = e.target.closest('.ci-date-pill');
+    if (datePill) {
+      e.preventDefault();
+      e.stopPropagation();
+      openDatePicker(datePill.closest('.ci-date-wrap'));
+      return;
+    }
+
     const expandRow = e.target.closest('.check-item.expandable');
-    if (expandRow && !e.target.closest('input, button, select, .item-details, .ci-date-wrap, .ci-date-pill')) {
+    if (expandRow && !e.target.closest('input, button, select, .item-details, .ci-date-wrap')) {
       const wrap = expandRow.closest('.check-item-wrap');
       const wasOpen = wrap.classList.contains('detail-open');
       section.querySelectorAll('.check-item-wrap.detail-open').forEach(w => {
@@ -966,14 +1018,7 @@ function attachTrackerEvents() {
   section.onchange = e => {
     const dateInp = e.target.closest('.ci-date-input');
     if (dateInp) {
-      const person = dateInp.dataset.person;
-      if (dateInp.dataset.savId) {
-        patchSavingsLine(person, dateInp.dataset.savId, { deposit: dateInp.value });
-      } else {
-        budgetChecks = setDeposit(budgetChecks, trackerYear, trackerMonth, person, dateInp.dataset.id, dateInp.value);
-      }
-      syncDatePill(dateInp);
-      scheduleSave();
+      saveDepositDate(dateInp);
       return;
     }
     const seCheck = e.target.closest('.se-check');
@@ -995,6 +1040,11 @@ function attachTrackerEvents() {
   };
 
   section.oninput = e => {
+    const dateInp = e.target.closest('.ci-date-input');
+    if (dateInp) {
+      saveDepositDate(dateInp);
+      return;
+    }
     const seName = e.target.closest('.se-name');
     if (seName) {
       patchSavingsLine(seName.dataset.person, seName.dataset.savId, { name: seName.value });
