@@ -58,7 +58,7 @@
 
 <script src="supabase-config.js"></script>
 <script type="module">
-import { initStore, loadChecks, saveChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getSavingsExtra, setSavingsExtra } from './store.js';
+import { initStore, loadChecks, saveChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra } from './store.js';
 import {
   INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
   aggregateActualInvestments, aggregateProjectedInvestments,
@@ -791,15 +791,43 @@ function syncDetailToStore(detailsEl) {
   scheduleSave();
 }
 
+function formatDepositDisplay(iso) {
+  if (!iso) return '날짜';
+  const parts = String(iso).split('-');
+  if (parts.length !== 3) return '날짜';
+  const [y, m, d] = parts;
+  return `${y.slice(-2)}.${m}.${d}`;
+}
+
+function syncDatePill(input) {
+  const pill = input.closest('.ci-date-pill');
+  const text = pill?.querySelector('.ci-date-text');
+  if (!pill || !text) return;
+  text.textContent = formatDepositDisplay(input.value);
+  pill.classList.toggle('has-value', !!input.value);
+}
+
+function renderDepositPill(deposit, attrs) {
+  const has = !!deposit;
+  return `<div class="ci-date-wrap">
+    <label class="ci-date-pill${has ? ' has-value' : ''}">
+      <span class="ci-date-text">${formatDepositDisplay(deposit)}</span>
+      <input type="date" class="ci-date-input" ${attrs} value="${escAttr(deposit || '')}">
+    </label>
+  </div>`;
+}
+
 function renderCheckRow(person, it) {
   const checked = getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id);
   const actual = getActual(budgetChecks, trackerYear, trackerMonth, person, it.id);
+  const deposit = getDeposit(budgetChecks, trackerYear, trackerMonth, person, it.id);
   const detailPanel = renderDetailPanel(person, it);
   const hasDetail = !!it.detailType;
   return `<div class="check-item-wrap${hasDetail ? ' has-detail' : ''}" data-person="${person}" data-id="${it.id}">
     <div class="check-item${checked ? ' done' : ''}${hasDetail ? ' expandable' : ''}" data-person="${person}" data-id="${it.id}">
       <input type="checkbox" class="ci-check" data-person="${person}" data-id="${it.id}" ${checked ? 'checked' : ''}>
       <div class="ci-name"><span class="ci-name-main">${it.name}${itemSubLabel(it)}</span></div>
+      ${renderDepositPill(deposit, `data-person="${person}" data-id="${it.id}"`)}
       <div class="ci-plan"><span>계획</span>${fmtShort(it.amt)}</div>
       <input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
         placeholder="실제 금액" inputmode="numeric"
@@ -812,12 +840,14 @@ function renderCheckRow(person, it) {
 function renderSavingsExtraRow(person, ln) {
   const actual = ln.actual !== '' && ln.actual != null && ln.actual !== undefined
     ? formatActualInput(Number(ln.actual)) : '';
+  const deposit = ln.deposit || '';
   return `<div class="check-item-wrap savings-extra-wrap" data-person="${person}" data-sav-id="${ln.id}">
     <div class="check-item savings-extra-item${ln.checked ? ' done' : ''}">
       <input type="checkbox" class="ci-check se-check" data-person="${person}" data-sav-id="${ln.id}" ${ln.checked ? 'checked' : ''}>
       <div class="ci-name">
         <input type="text" class="ci-name-field se-name" data-person="${person}" data-sav-id="${ln.id}" placeholder="항목명 (예: ISA 목돈)" value="${escAttr(ln.name)}">
       </div>
+      ${renderDepositPill(deposit, `data-person="${person}" data-sav-id="${ln.id}"`)}
       <div class="ci-plan"><span>계획</span>—</div>
       <input type="text" class="ci-actual se-actual" data-person="${person}" data-sav-id="${ln.id}"
         placeholder="실제 금액" inputmode="numeric" value="${actual}">
@@ -861,7 +891,7 @@ function attachTrackerEvents() {
 
   section.onclick = e => {
     const expandRow = e.target.closest('.check-item.expandable');
-    if (expandRow && !e.target.closest('input, button, select, .item-details')) {
+    if (expandRow && !e.target.closest('input, button, select, .item-details, .ci-date-wrap, .ci-date-pill')) {
       const wrap = expandRow.closest('.check-item-wrap');
       const wasOpen = wrap.classList.contains('detail-open');
       section.querySelectorAll('.check-item-wrap.detail-open').forEach(w => {
@@ -883,7 +913,7 @@ function attachTrackerEvents() {
       e.preventDefault();
       const person = addSavBtn.dataset.person;
       const lines = [...getSavingsExtraLines(person)];
-      const line = { id: 'sav_' + Date.now(), name: '', checked: false, actual: '' };
+      const line = { id: 'sav_' + Date.now(), name: '', checked: false, actual: '', deposit: '' };
       lines.push(line);
       budgetChecks = setSavingsExtra(budgetChecks, trackerYear, trackerMonth, person, lines);
       addSavBtn.previousElementSibling.insertAdjacentHTML('beforeend', renderSavingsExtraRow(person, line));
@@ -934,6 +964,18 @@ function attachTrackerEvents() {
   };
 
   section.onchange = e => {
+    const dateInp = e.target.closest('.ci-date-input');
+    if (dateInp) {
+      const person = dateInp.dataset.person;
+      if (dateInp.dataset.savId) {
+        patchSavingsLine(person, dateInp.dataset.savId, { deposit: dateInp.value });
+      } else {
+        budgetChecks = setDeposit(budgetChecks, trackerYear, trackerMonth, person, dateInp.dataset.id, dateInp.value);
+      }
+      syncDatePill(dateInp);
+      scheduleSave();
+      return;
+    }
     const seCheck = e.target.closest('.se-check');
     if (seCheck) {
       patchSavingsLine(seCheck.dataset.person, seCheck.dataset.savId, { checked: seCheck.checked });

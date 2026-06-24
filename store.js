@@ -171,6 +171,25 @@ export function getSavingsExtra(checks, year, month, person) {
   return Array.isArray(m) ? m : [];
 }
 
+export function depositKey(person, itemId) {
+  return `${person}_${itemId}_deposit`;
+}
+
+export function getDeposit(checks, year, month, person, itemId) {
+  const key = depositKey(person, itemId);
+  const m = checks?.[year]?.[month];
+  if (!m || !m[key]) return '';
+  return String(m[key]);
+}
+
+export function setDeposit(checks, year, month, person, itemId, value) {
+  const next = structuredClone(checks);
+  if (!next[year]) next[year] = {};
+  if (!next[year][month]) next[year][month] = {};
+  next[year][month][depositKey(person, itemId)] = value || '';
+  return next;
+}
+
 export function setSavingsExtra(checks, year, month, person, lines) {
   const next = structuredClone(checks);
   if (!next[year]) next[year] = {};
