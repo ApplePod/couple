@@ -65,7 +65,8 @@ import {
   calcYearBreakdown, calcCumulative, getForecastYears, countRecordedMonths,
   totalInvested, achievementPct, achievementStatus, planMonthsInYear,
 } from './forecast.js';
-import { getPandaStage, pickMascotMessage, refreshMascotMessage, PANDA_STAGES } from './mascot-messages.js';
+import { getPandaStage, pickMascotMessage, refreshMascotMessage } from './mascot-messages.js';
+import { startPandaAnimation } from './panda-sprites.js';
 
 let lastMascotStageId = 0;
 
@@ -1346,7 +1347,7 @@ function renderWilliam() {
 function renderForecastMascot(pct, actual, planned) {
   const stage = getPandaStage(pct);
   const quote = pickMascotMessage();
-  const scale = (0.82 + stage.id * 0.07).toFixed(3);
+  const scale = (0.88 + stage.id * 0.06).toFixed(3);
   const grew = lastMascotStageId !== stage.id;
   lastMascotStageId = stage.id;
   const st = achievementStatus(pct);
@@ -1362,7 +1363,7 @@ function renderForecastMascot(pct, actual, planned) {
         <p class="fm-quote">${escHtml(quote)}</p>
       </div>
       <div class="fm-panda-box${grew ? ' fm-grow' : ''}">
-        <img class="fm-panda-img" src="${stage.img}" alt="노랑 판다 ${stage.label}" width="96" height="96" loading="lazy">
+        <div class="fm-panda-sprite" role="img" aria-label="노랑 판다 ${stage.label}"></div>
       </div>
     </div>
   </div>`;
@@ -1377,8 +1378,13 @@ function escHtml(s) {
 }
 
 function attachMascotEvents() {
+  const overlay = document.querySelector('.fm-overlay');
   const btn = document.querySelector('.fm-quote-refresh');
   const quoteEl = document.querySelector('.fm-quote');
+  if (overlay) {
+    const stageId = Number(overlay.dataset.stage) || 1;
+    startPandaAnimation(stageId);
+  }
   if (!btn || !quoteEl) return;
   btn.onclick = (e) => {
     e.preventDefault();
