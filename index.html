@@ -83,6 +83,30 @@
     }
     .hero p { color: var(--muted); font-size: .92rem; margin-top: 10px; }
 
+    .main-nav {
+      display: flex; gap: 10px; margin-bottom: 28px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 6px;
+    }
+    .main-nav-btn {
+      flex: 1; padding: 16px 20px; border: none; border-radius: 12px;
+      background: transparent; color: var(--muted);
+      font-family: inherit; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: all .25s;
+    }
+    .main-nav-btn:hover { color: var(--text); background: rgba(255,255,255,.03); }
+    .main-nav-btn.active {
+      background: linear-gradient(135deg, rgba(91,141,239,.25), rgba(176,124,247,.25));
+      color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    }
+    .main-page { display: none; animation: fadeIn .35s ease; }
+    .main-page.active { display: block; }
+    .plan-footer {
+      text-align: center; color: var(--muted); font-size: .75rem;
+      margin-top: 28px; line-height: 1.8;
+    }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
     /* ── 요약 대시보드 ── */
     .dashboard {
       display: grid;
@@ -237,14 +261,12 @@
     }
     .pcard.sn .tag-auto { background: var(--sn-glow); color: var(--sn); }
 
-    /* 연간 체크 (시온) */
-    .tracker-section {
-      margin-top: 28px;
+    /* 연간 체크 */
+    .tracker-page {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 28px;
-      border-top: 3px solid var(--sn);
     }
     .tracker-header {
       display: flex; flex-wrap: wrap; align-items: center;
@@ -302,6 +324,27 @@
     .check-item .ci-amt { font-size: .88rem; font-weight: 700; color: var(--muted); }
     .check-item.done .ci-amt { color: var(--green); }
     .check-item.done .ci-name { text-decoration: line-through; opacity: .75; }
+
+    .tracker-dual {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 8px;
+    }
+    @media (max-width: 800px) { .tracker-dual { grid-template-columns: 1fr; } }
+
+    .tracker-col {
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+    .tracker-col.yj { background: linear-gradient(180deg, rgba(91,141,239,.06) 0%, transparent 100%); border-top: 3px solid var(--yj); }
+    .tracker-col.sn { background: linear-gradient(180deg, rgba(176,124,247,.06) 0%, transparent 100%); border-top: 3px solid var(--sn); }
+    .tracker-col-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+    .tracker-col-head h4 { font-size: 1rem; font-weight: 800; }
+    .tracker-col.yj .tracker-col-head h4 { color: var(--yj); }
+    .tracker-col.sn .tracker-col-head h4 { color: var(--sn); }
+    .tracker-col-progress { font-size: .78rem; font-weight: 700; color: var(--muted); }
 
     .config-hint {
       margin-top: 16px; padding: 14px 16px; border-radius: var(--radius-sm);
@@ -509,6 +552,8 @@
     .living-sum-card.left.over .sv { color: var(--red); }
     .living-sum-card.pct { background: var(--sn-glow); }
     .living-sum-card.pct .sv { color: var(--sn); }
+
+    .person-grid { margin-bottom: 28px; }
   </style>
 </head>
 <body>
@@ -521,40 +566,30 @@
     <p>처음으로 서로의 돈을 알고, 함께 관리하기 시작합니다</p>
   </section>
 
-  <div class="dashboard" id="dashboard"></div>
+  <nav class="main-nav" id="main-nav">
+    <button class="main-nav-btn active" data-page="plan">📊 월정산 계획</button>
+    <button class="main-nav-btn" data-page="checklist">✅ 체크리스트</button>
+  </nav>
 
-  <div class="budget-bar-wrap" id="budget-bar"></div>
-
-  <div class="tabs" id="tabs">
-    <button class="tab both active" data-tab="both">둘 다</button>
-    <button class="tab yj" data-tab="yj">영재</button>
-    <button class="tab sn" data-tab="sn">시온</button>
+  <!-- ═══ 계획 페이지 ═══ -->
+  <div class="main-page active" id="page-plan">
+    <div class="dashboard" id="dashboard"></div>
+    <div class="budget-bar-wrap" id="budget-bar"></div>
+    <div class="person-grid dual" id="grid-both"></div>
+    <div class="bottom-grid">
+      <div class="section-card" id="isa-section"></div>
+      <div class="section-card william-card" id="william-section"></div>
+    </div>
+    <div class="living-section" id="living-section"></div>
+    <footer class="plan-footer">
+      공과금은 2인 가구 투룸 12평 기준 예상치 · 영재 ISA 목돈 2천만원 7월 일시불 (월 합계 제외)
+    </footer>
   </div>
 
-  <div class="panels">
-    <div class="panel active" id="panel-both">
-      <div class="person-grid dual" id="grid-both"></div>
-    </div>
-    <div class="panel" id="panel-yj">
-      <div class="person-grid" id="grid-yj"></div>
-    </div>
-    <div class="panel" id="panel-sn">
-      <div class="person-grid" id="grid-sn"></div>
-    </div>
+  <!-- ═══ 체크리스트 페이지 ═══ -->
+  <div class="main-page" id="page-checklist">
+    <div class="tracker-page" id="tracker-section"></div>
   </div>
-
-  <div class="bottom-grid">
-    <div class="section-card" id="isa-section"></div>
-    <div class="section-card william-card" id="william-section"></div>
-  </div>
-
-  <div class="living-section" id="living-section"></div>
-
-  <div class="tracker-section" id="tracker-section"></div>
-
-  <footer>
-    공과금은 2인 가구 투룸 12평 기준 예상치 · 영재 ISA 목돈 2천만원 7월 일시불 (월 합계 제외)
-  </footer>
 </div>
 
 <script src="supabase-config.js"></script>
@@ -623,6 +658,24 @@ const SN = {
 /* 시온 연간 체크 항목 */
 const TRACKER_YEARS = [2026, 2027];
 const MONTH_LABELS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+/* 체크리스트 항목 */
+const YJ_CHECK_ITEMS = [
+  { id: 'isa', name: 'ISA 목돈', note: '7월 일시불 2천만', amt: 20000000, auto: true, julyOnly: true },
+  { id: 'irp', name: 'IRP', note: 'ETF 장투', amt: 500000, auto: true },
+  { id: 'pension', name: '연금저축펀드', note: '고영 ETF', amt: 1000000, auto: true },
+  { id: 'youth', name: '청년미래적금', note: '', amt: 500000, auto: true },
+  { id: 'kr', name: '국장 투자', note: '', amt: 500000, auto: true },
+  { id: 'housing', name: '주택청약', note: '', amt: 250000, auto: true },
+  { id: 'rent', name: '주거비', note: '', amt: 750000, auto: true },
+  { id: 'loan', name: '월세 대출이자', note: '', amt: 130000, auto: true },
+  { id: 'pocket', name: '용돈', note: '직접 관리', amt: 700000, auto: false },
+  { id: 'electric', name: '전기세', note: '예상', amt: 40000, auto: true },
+  { id: 'gas', name: '가스료', note: '예상', amt: 30000, auto: true },
+  { id: 'water', name: '수도요금', note: '예상', amt: 20000, auto: true },
+  { id: 'internet', name: '인터넷', note: '예상', amt: 35000, auto: true },
+  { id: 'william', name: '윌리엄 할부', note: '780만 12개월', amt: 650000, auto: true },
+];
 
 const SN_CHECK_ITEMS = [
   { id: 'isa', name: 'ISA', note: '자동이체', amt: 500000, auto: true },
@@ -983,11 +1036,45 @@ function scheduleSave() {
   }, 400);
 }
 
-function renderTracker() {
-  const done = SN_CHECK_ITEMS.filter(it =>
-    getCheck(budgetChecks, trackerYear, trackerMonth, it.id)).length;
-  const total = SN_CHECK_ITEMS.length;
+function renderCheckColumn(person, items, colorClass) {
+  const visible = items.filter(it => !it.julyOnly || trackerMonth === '7');
+  const done = visible.filter(it =>
+    getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id)).length;
+  const total = visible.length;
   const pct = total ? (done / total * 100) : 0;
+
+  const checks = visible.map(it => {
+    const checked = getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id);
+    return `<label class="check-item${checked ? ' done' : ''}">
+      <input type="checkbox" data-person="${person}" data-id="${it.id}" ${checked ? 'checked' : ''}>
+      <div class="ci-name">${it.name}${it.auto ? '<small>자동이체</small>' : '<small>직접 관리</small>'}</div>
+      <div class="ci-amt">${fmt(it.amt)}</div>
+    </label>`;
+  }).join('');
+
+  const label = person === 'yj' ? '영재' : '시온';
+  return `<div class="tracker-col ${colorClass}">
+    <div class="tracker-col-head">
+      <h4>${label}</h4>
+      <span class="tracker-col-progress">${done}/${total}</span>
+    </div>
+    <div class="tracker-progress" style="margin-bottom:12px">
+      <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div class="check-list">${checks}</div>
+  </div>`;
+}
+
+function renderTracker() {
+  const yjItems = YJ_CHECK_ITEMS;
+  const snItems = SN_CHECK_ITEMS;
+  const yjVisible = yjItems.filter(it => !it.julyOnly || trackerMonth === '7');
+  const snVisible = snItems;
+  const totalDone =
+    yjVisible.filter(it => getCheck(budgetChecks, trackerYear, trackerMonth, 'yj', it.id)).length +
+    snVisible.filter(it => getCheck(budgetChecks, trackerYear, trackerMonth, 'sn', it.id)).length;
+  const totalAll = yjVisible.length + snVisible.length;
+  const pct = totalAll ? (totalDone / totalAll * 100) : 0;
 
   const yearBtns = TRACKER_YEARS.map(y =>
     `<button class="year-tab${y === trackerYear ? ' active' : ''}" data-year="${y}">${y}년</button>`
@@ -998,32 +1085,26 @@ function renderTracker() {
     return `<button class="month-tab${m === trackerMonth ? ' active' : ''}" data-month="${m}">${lbl}</button>`;
   }).join('');
 
-  const checks = SN_CHECK_ITEMS.map(it => {
-    const checked = getCheck(budgetChecks, trackerYear, trackerMonth, it.id);
-    return `<label class="check-item${checked ? ' done' : ''}">
-      <input type="checkbox" data-id="${it.id}" ${checked ? 'checked' : ''}>
-      <div class="ci-name">${it.name}${it.auto ? '<small>자동이체</small>' : '<small>직접 관리</small>'}</div>
-      <div class="ci-amt">${fmt(it.amt)}</div>
-    </label>`;
-  }).join('');
-
   const sbHint = storeMode === 'local'
-    ? `<div class="config-hint">⚠️ Supabase 미연결 — 지금은 이 브라우저에만 저장됩니다. <code>supabase-config.js</code>에 URL·anon key를 넣으면 둘이 실시간 동기화됩니다.</div>`
+    ? `<div class="config-hint">⚠️ Supabase 미연결 — 브라우저에만 저장됩니다.</div>`
     : '';
 
   document.getElementById('tracker-section').innerHTML = `
     <div class="tracker-header">
-      <h3>✅ 시온 · 월별 체크리스트</h3>
+      <h3>✅ 월별 체크리스트</h3>
       <span class="sync-status" id="sync-status">${storeMode === 'supabase' ? 'Supabase 연결됨' : '로컬 저장'}</span>
     </div>
     <div class="year-tabs" id="year-tabs">${yearBtns}</div>
     <div class="month-tabs" id="month-tabs">${monthBtns}</div>
     <div class="tracker-progress">
-      <span>${trackerYear}년 ${trackerMonth}월</span>
+      <span>${trackerYear}년 ${trackerMonth}월 · 가구 합계</span>
       <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
-      <strong>${done}/${total}</strong>
+      <strong>${totalDone}/${totalAll}</strong>
     </div>
-    <div class="check-list" id="check-list">${checks}</div>
+    <div class="tracker-dual">
+      ${renderCheckColumn('yj', yjItems, 'yj')}
+      ${renderCheckColumn('sn', snItems, 'sn')}
+    </div>
     ${sbHint}`;
 
   document.getElementById('year-tabs').onclick = e => {
@@ -1040,10 +1121,10 @@ function renderTracker() {
     renderTracker();
   };
 
-  document.getElementById('check-list').onchange = e => {
+  document.getElementById('tracker-section').querySelector('.tracker-dual').onchange = e => {
     const cb = e.target.closest('input[type=checkbox]');
     if (!cb) return;
-    budgetChecks = setCheck(budgetChecks, trackerYear, trackerMonth, cb.dataset.id, cb.checked);
+    budgetChecks = setCheck(budgetChecks, trackerYear, trackerMonth, cb.dataset.person, cb.dataset.id, cb.checked);
     scheduleSave();
     renderTracker();
   };
@@ -1057,15 +1138,15 @@ function renderWilliam() {
     <div class="william-amt">월 ${fmt(650000)}</div>`;
 }
 
-// 탭
-document.getElementById('tabs').addEventListener('click', e => {
-  const btn = e.target.closest('.tab');
+// 메인 탭 (계획 / 체크리스트)
+document.getElementById('main-nav').addEventListener('click', e => {
+  const btn = e.target.closest('.main-nav-btn');
   if (!btn) return;
-  const tab = btn.dataset.tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const page = btn.dataset.page;
+  document.querySelectorAll('.main-nav-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + tab).classList.add('active');
+  document.querySelectorAll('.main-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
 });
 
 // 렌더
@@ -1073,8 +1154,6 @@ const yjExp = sum(YJ.items) + (YJ.isa?.monthly ? sum(YJ.isa.rows) : 0);
 const snExp = sum(SN.items) + (SN.isa?.monthly ? sum(SN.isa.rows) : 0);
 
 document.getElementById('grid-both').innerHTML = renderPersonCard(YJ) + renderPersonCard(SN);
-document.getElementById('grid-yj').innerHTML = renderPersonCard(YJ);
-document.getElementById('grid-sn').innerHTML = renderPersonCard(SN);
 
 renderDashboard(yjExp, snExp);
 renderISA();

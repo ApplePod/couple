@@ -102,14 +102,23 @@ export async function saveChecks(checks) {
   }
 }
 
-export function getCheck(checks, year, month, itemId) {
-  return !!checks?.[year]?.[month]?.[itemId];
+export function checkKey(person, itemId) {
+  return `${person}_${itemId}`;
 }
 
-export function setCheck(checks, year, month, itemId, value) {
+export function getCheck(checks, year, month, person, itemId) {
+  const key = checkKey(person, itemId);
+  const m = checks?.[year]?.[month];
+  if (!m) return false;
+  if (key in m) return !!m[key];
+  if (person === "sn" && itemId in m) return !!m[itemId];
+  return false;
+}
+
+export function setCheck(checks, year, month, person, itemId, value) {
   const next = structuredClone(checks);
   if (!next[year]) next[year] = {};
   if (!next[year][month]) next[year][month] = {};
-  next[year][month][itemId] = value;
+  next[year][month][checkKey(person, itemId)] = value;
   return next;
 }
