@@ -1,6 +1,6 @@
 /**
- * 애니 스타일 펫 — 포즈 이미지(12종) × 동작 곡선 × 키프레임 ≈ 200컷
- * 각 컷: 어떤 그림(포즈) + 그 포즈 전용 움직임 한 순간
+ * 애니 스타일 펫 — 전신 포즈 3종 × 동작 곡선 × 200키프레임
+ * (정면 / 하트 / 손흔들기 그림만 사용 — 알·머리만 클립 제거)
  */
 
 const POSES = {
@@ -9,68 +9,56 @@ const POSES = {
   wave: "assets/pet/char-wave.png",
 };
 
-const HAIR = Array.from({ length: 9 }, (_, i) =>
-  `assets/pet/hair-${String(i + 1).padStart(2, "0")}.png`
-);
-
 const KEYFRAME_COUNT = 200;
 
+/** [동작이름, 포즈이미지, 컷수, ms, { flip? }] */
 const STAGE_CLIPS = {
   1: [
-    ["peek", POSES.front, 14, 58, { egg: true }],
-    ["stand", POSES.front, 12, 68, { egg: true }],
-    ["hop", POSES.front, 16, 48, { egg: true }],
-    ["shy", POSES.front, 10, 62, { egg: true }],
-    ["peek", POSES.front, 12, 55, { egg: true }],
+    ["stand", POSES.front, 14, 70, {}],
+    ["hop", POSES.front, 16, 50, {}],
+    ["shy", POSES.front, 12, 64, {}],
+    ["happy", POSES.front, 14, 56, {}],
+    ["stand", POSES.front, 12, 68, {}],
   ],
   2: [
-    ["hairNod", HAIR[0], 10, 56, { bust: true }],
-    ["stand", POSES.front, 12, 64, {}],
-    ["hop", POSES.front, 16, 46, {}],
-    ["happy", POSES.front, 14, 52, {}],
-    ["hairNod", HAIR[1], 10, 58, { bust: true }],
-    ["stand", POSES.front, 10, 66, {}],
-    ["hop", POSES.front, 14, 48, {}],
+    ["stand", POSES.front, 14, 66, {}],
+    ["hop", POSES.front, 16, 48, {}],
+    ["happy", POSES.front, 14, 54, {}],
+    ["hop", POSES.front, 14, 50, {}],
+    ["stand", POSES.front, 12, 70, {}],
   ],
   3: [
-    ["hairNod", HAIR[2], 10, 56, { bust: true }],
-    ["stand", POSES.front, 12, 62, {}],
-    ["wave", POSES.wave, 18, 48, {}],
+    ["stand", POSES.front, 12, 64, {}],
+    ["wave", POSES.wave, 20, 48, {}],
     ["hop", POSES.front, 16, 46, {}],
     ["happy", POSES.front, 14, 52, {}],
-    ["wave", POSES.wave, 16, 50, { flip: true }],
-    ["hairNod", HAIR[3], 10, 58, { bust: true }],
-    ["stand", POSES.front, 10, 64, {}],
+    ["wave", POSES.wave, 18, 50, { flip: true }],
+    ["stand", POSES.front, 10, 66, {}],
   ],
   4: [
-    ["stand", POSES.heart, 10, 66, {}],
-    ["heart", POSES.heart, 18, 50, {}],
+    ["stand", POSES.heart, 12, 66, {}],
+    ["heart", POSES.heart, 20, 50, {}],
     ["hop", POSES.heart, 14, 48, {}],
     ["happy", POSES.heart, 14, 54, {}],
     ["heart", POSES.heart, 16, 48, { flip: true }],
-    ["stand", POSES.front, 10, 62, {}],
+    ["stand", POSES.front, 10, 64, {}],
     ["hop", POSES.front, 14, 46, {}],
-    ["heart", POSES.heart, 14, 52, {}],
   ],
   5: [
-    ["wave", POSES.wave, 18, 48, {}],
-    ["stand", POSES.wave, 10, 66, {}],
+    ["wave", POSES.wave, 20, 48, {}],
+    ["stand", POSES.wave, 12, 66, {}],
     ["hop", POSES.wave, 14, 46, {}],
     ["happy", POSES.wave, 14, 52, {}],
-    ["wave", POSES.wave, 16, 50, { flip: true }],
-    ["heart", POSES.heart, 16, 50, {}],
-    ["hairNod", HAIR[7], 10, 58, { bust: true }],
-    ["wave", POSES.wave, 14, 48, {}],
+    ["heart", POSES.heart, 18, 50, {}],
+    ["wave", POSES.wave, 16, 48, { flip: true }],
   ],
   6: [
-    ["wave", POSES.wave, 18, 46, {}],
-    ["heart", POSES.heart, 18, 50, {}],
+    ["wave", POSES.wave, 20, 46, {}],
+    ["heart", POSES.heart, 20, 50, {}],
     ["happy", POSES.wave, 14, 52, {}],
     ["hop", POSES.wave, 16, 44, {}],
-    ["wave", POSES.wave, 16, 48, { flip: true }],
-    ["heart", POSES.heart, 14, 52, {}],
-    ["hairNod", HAIR[8], 10, 58, { bust: true }],
-    ["proud", POSES.wave, 12, 60, {}],
+    ["heart", POSES.heart, 16, 48, { flip: true }],
+    ["proud", POSES.wave, 14, 60, {}],
   ],
 };
 
@@ -197,8 +185,6 @@ function buildKeyframeLibrary(stageId) {
         p: count > 1 ? i / (count - 1) : 0.5,
         ms: ms + (variation % 4) * 3,
         variation: variation % 12,
-        bust: !!opts.bust,
-        egg: !!opts.egg,
         flip: !!opts.flip,
       });
       variation++;
@@ -213,25 +199,14 @@ const STAGE_LIBRARIES = Object.fromEntries(
   [1, 2, 3, 4, 5, 6].map((id) => [id, buildKeyframeLibrary(id)])
 );
 
-function eggShell() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true" class="fm-egg-shell">
-    <ellipse cx="60" cy="82" rx="36" ry="30" fill="#B6D8F2" stroke="#1a1a1a" stroke-width="3.4" stroke-linejoin="round"/>
-    <path d="M30 72 Q60 58 90 72" stroke="#1a1a1a" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-  </svg>`;
-}
-
 function buildDOM(firstKf) {
-  const layers = `<div class="fm-panda-layers">
-    <img src="${firstKf.src}" alt="" class="fm-panda-art fm-layer fm-layer-a${firstKf.bust ? " fm-panda-bust" : ""}${firstKf.flip ? " fm-panda-flip" : ""}" draggable="false" decoding="async">
-    <img src="${firstKf.src}" alt="" class="fm-panda-art fm-layer fm-layer-b" hidden draggable="false" decoding="async">
+  const flip = firstKf.flip ? " fm-panda-flip" : "";
+  return `<div class="fm-panda-motion">
+    <div class="fm-panda-layers">
+      <img src="${firstKf.src}" alt="" class="fm-panda-art fm-layer fm-layer-a fm-layer-visible${flip}" draggable="false" decoding="async">
+      <img src="${firstKf.src}" alt="" class="fm-panda-art fm-layer fm-layer-b" hidden draggable="false" decoding="async">
+    </div>
   </div>`;
-
-  if (firstKf.egg) {
-    return `<div class="fm-panda-motion">
-      <div class="fm-panda-egg"><div class="fm-panda-peek-wrap">${layers}</div>${eggShell()}</div>
-    </div>`;
-  }
-  return `<div class="fm-panda-motion">${layers}</div>`;
 }
 
 function applyTransform(el, m) {
@@ -244,9 +219,8 @@ function crossfadePose(layers, kf) {
   if (!a || !b) return;
 
   const nextSrc = kf.src;
-  if (a.getAttribute("src") === nextSrc && !kf.flip) {
-    a.classList.toggle("fm-panda-bust", !!kf.bust);
-    a.classList.toggle("fm-panda-flip", !!kf.flip);
+  const visible = a.classList.contains("fm-layer-visible") ? a : b;
+  if (visible.getAttribute("src") === nextSrc && visible.classList.contains("fm-panda-flip") === !!kf.flip) {
     return;
   }
 
@@ -254,7 +228,6 @@ function crossfadePose(layers, kf) {
   const outgoing = incoming === a ? b : a;
 
   incoming.setAttribute("src", nextSrc);
-  incoming.classList.toggle("fm-panda-bust", !!kf.bust);
   incoming.classList.toggle("fm-panda-flip", !!kf.flip);
   incoming.hidden = false;
   incoming.classList.add("fm-layer-visible", "fm-layer-in");
@@ -284,7 +257,7 @@ function animationLoop(now) {
   if (elapsed >= kf.ms) {
     const nextIdx = (frameIdx + 1) % frames.length;
     const next = frames[nextIdx];
-    if (next.src !== kf.src || next.flip !== kf.flip || next.bust !== kf.bust) {
+    if (next.src !== kf.src || next.flip !== kf.flip) {
       crossfadePose(layers, next);
     }
     _state.frameIdx = nextIdx;
