@@ -1,12 +1,14 @@
 /**
- * 애니 스타일 펫 — 전신 포즈 3종 × 동작 곡선 × 200키프레임
- * (정면 / 하트 / 손흔들기 그림만 사용 — 알·머리만 클립 제거)
+ * 애니 스타일 펫 — 전신 포즈 5종 × 옷 변화 × 200키프레임
+ * 물방울 잠옷 / 웃음 / 도형 패턴 / 하트 / 노란 셔츠
  */
 
 const POSES = {
   front: "assets/pet/char-front.png",
+  laugh: "assets/pet/char-laugh.png",
   heart: "assets/pet/char-heart.png",
   wave: "assets/pet/char-wave.png",
+  peek: "assets/pet/char-peek.png",
 };
 
 const KEYFRAME_COUNT = 200;
@@ -21,44 +23,48 @@ const STAGE_CLIPS = {
     ["stand", POSES.front, 12, 68, {}],
   ],
   2: [
-    ["stand", POSES.front, 14, 66, {}],
-    ["hop", POSES.front, 16, 48, {}],
-    ["happy", POSES.front, 14, 54, {}],
-    ["hop", POSES.front, 14, 50, {}],
-    ["stand", POSES.front, 12, 70, {}],
+    ["stand", POSES.front, 12, 66, {}],
+    ["laugh", POSES.laugh, 18, 52, {}],
+    ["hop", POSES.front, 14, 48, {}],
+    ["happy", POSES.laugh, 14, 54, {}],
+    ["stand", POSES.laugh, 10, 68, {}],
+    ["shy", POSES.front, 10, 62, {}],
   ],
   3: [
-    ["stand", POSES.front, 12, 64, {}],
-    ["wave", POSES.wave, 20, 48, {}],
-    ["hop", POSES.front, 16, 46, {}],
-    ["happy", POSES.front, 14, 52, {}],
-    ["wave", POSES.wave, 18, 50, { flip: true }],
-    ["stand", POSES.front, 10, 66, {}],
-  ],
-  4: [
-    ["stand", POSES.heart, 12, 66, {}],
-    ["heart", POSES.heart, 20, 50, {}],
-    ["hop", POSES.heart, 14, 48, {}],
-    ["happy", POSES.heart, 14, 54, {}],
-    ["heart", POSES.heart, 16, 48, { flip: true }],
     ["stand", POSES.front, 10, 64, {}],
-    ["hop", POSES.front, 14, 46, {}],
-  ],
-  5: [
     ["wave", POSES.wave, 20, 48, {}],
-    ["stand", POSES.wave, 12, 66, {}],
+    ["laugh", POSES.laugh, 16, 50, {}],
     ["hop", POSES.wave, 14, 46, {}],
     ["happy", POSES.wave, 14, 52, {}],
-    ["heart", POSES.heart, 18, 50, {}],
     ["wave", POSES.wave, 16, 48, { flip: true }],
   ],
+  4: [
+    ["heart", POSES.heart, 18, 50, {}],
+    ["wave", POSES.wave, 16, 48, {}],
+    ["laugh", POSES.laugh, 14, 52, {}],
+    ["hop", POSES.heart, 14, 46, {}],
+    ["happy", POSES.heart, 12, 54, {}],
+    ["heart", POSES.heart, 14, 48, { flip: true }],
+    ["stand", POSES.wave, 10, 64, {}],
+  ],
+  5: [
+    ["peek", POSES.peek, 16, 54, {}],
+    ["wave", POSES.wave, 18, 48, {}],
+    ["heart", POSES.heart, 16, 50, {}],
+    ["laugh", POSES.laugh, 14, 52, {}],
+    ["hop", POSES.peek, 14, 44, {}],
+    ["happy", POSES.peek, 12, 56, {}],
+    ["wave", POSES.wave, 14, 48, { flip: true }],
+  ],
   6: [
-    ["wave", POSES.wave, 20, 46, {}],
-    ["heart", POSES.heart, 20, 50, {}],
-    ["happy", POSES.wave, 14, 52, {}],
-    ["hop", POSES.wave, 16, 44, {}],
-    ["heart", POSES.heart, 16, 48, { flip: true }],
-    ["proud", POSES.wave, 14, 60, {}],
+    ["peek", POSES.peek, 16, 50, {}],
+    ["wave", POSES.wave, 18, 46, {}],
+    ["heart", POSES.heart, 18, 48, {}],
+    ["laugh", POSES.laugh, 16, 50, {}],
+    ["happy", POSES.peek, 14, 52, {}],
+    ["hop", POSES.wave, 14, 44, {}],
+    ["proud", POSES.heart, 12, 58, {}],
+    ["peek", POSES.peek, 12, 54, { flip: true }],
   ],
 };
 
@@ -145,6 +151,18 @@ const MOTION = {
     const e = easeInOutSine(Math.min(1, p * 1.2));
     const w = Math.sin(p * Math.PI * 5) * (1 - p * 0.35) * 4;
     return { ty: -e * 3.5, tx: w, rot: w * 0.55, sx: 1, sy: 1 + e * 0.008 };
+  },
+  laugh(p, v = 0) {
+    const o = v * 0.18;
+    const bounce = Math.sin((p + o) * Math.PI * 2);
+    const giggle = Math.sin((p + o) * Math.PI * 6) * (1 - p * 0.2) * 2.5;
+    return {
+      ty: -Math.abs(bounce) * 4 - giggle * 0.6,
+      tx: giggle,
+      rot: bounce * 2.2 + giggle * 0.35,
+      sx: 1 + bounce * 0.018,
+      sy: 1 + Math.abs(bounce) * 0.012,
+    };
   },
   peek(p) {
     const rise = Math.sin(easeInOutSine(p) * Math.PI);
