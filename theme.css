@@ -716,7 +716,7 @@
       min-width: 120px;
       max-width: 148px;
       margin-bottom: 6px;
-      padding: 7px 22px 7px 11px;
+      padding: 7px 11px;
       background: #fffef8;
       border: 2.5px solid #1a1a1a;
       border-radius: 16px 12px 14px 18px;
@@ -757,24 +757,6 @@
       0% { opacity: 0; transform: translateY(4px); }
       100% { opacity: 1; transform: translateY(0); }
     }
-    .fm-quote-refresh {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      width: 18px;
-      height: 18px;
-      padding: 0;
-      border: 2px solid #1a1a1a;
-      border-radius: 100px;
-      background: #fff;
-      color: #1a1a1a;
-      font-size: .7rem;
-      font-weight: 700;
-      cursor: pointer;
-      line-height: 1;
-      transition: background .15s, transform .15s;
-    }
-    .fm-quote-refresh:hover { background: #F9E4B7; transform: rotate(90deg); }
     .fm-panda-box {
       display: flex;
       align-items: flex-end;

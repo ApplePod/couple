@@ -1384,7 +1384,6 @@ function renderForecastMascot(pct, actual, planned) {
     </div>
     <div class="fm-overlay" data-stage="${stage.id}" style="--fm-scale:${scale}">
       <div class="fm-speech">
-        <button type="button" class="fm-quote-refresh" title="다른 멘트 보기" aria-label="다른 멘트">↻</button>
         <p class="fm-quote">${escHtml(quote)}</p>
       </div>
       <div class="fm-panda-box${grew ? ' fm-grow' : ''}">
@@ -1405,20 +1404,12 @@ function escHtml(s) {
 function attachMascotEvents() {
   stopMascotQuoteRefresh();
   const overlay = document.querySelector('.fm-overlay');
-  const btn = document.querySelector('.fm-quote-refresh');
   const quoteEl = document.querySelector('.fm-quote');
   if (overlay) {
     const stageId = Number(overlay.dataset.stage) || 1;
     startPandaAnimation(stageId);
   }
-  if (!quoteEl) return;
-  scheduleMascotQuoteRefresh(quoteEl);
-  if (!btn) return;
-  btn.onclick = (e) => {
-    e.preventDefault();
-    popMascotQuote(quoteEl, refreshMascotMessage());
-    scheduleMascotQuoteRefresh(quoteEl);
-  };
+  if (quoteEl) scheduleMascotQuoteRefresh(quoteEl);
 }
 
 function renderForecast() {
