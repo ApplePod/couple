@@ -371,8 +371,7 @@
     .tracker-col.yj .ci-check { accent-color: var(--yj); }
     .check-item .ci-name {
       grid-area: name;
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 6px; min-width: 0; line-height: 1.35;
+      min-width: 0; line-height: 1.35;
     }
     .check-item .ci-name-main {
       min-width: 0; flex: 1;
@@ -390,12 +389,6 @@
     }
     .ci-name-field::placeholder { color: var(--muted); font-weight: 500; }
     .ci-name-field:focus { outline: none; }
-    .ci-detail-toggle {
-      flex-shrink: 0; width: 14px;
-      font-size: .68rem; color: var(--muted); font-weight: 700;
-      line-height: 1.35; text-align: right;
-    }
-    .ci-detail-toggle.is-placeholder { visibility: hidden; }
     .check-item .ci-plan {
       grid-area: plan;
       font-size: .78rem; font-weight: 600; color: var(--muted); white-space: nowrap;
@@ -442,6 +435,7 @@
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 6px; color: var(--text);
       font-family: inherit; font-size: .78rem;
+      appearance: none;
     }
     .detail-table input:focus, .detail-table select:focus {
       outline: none; border-color: var(--yj);
@@ -969,8 +963,6 @@
       border-radius: 8px; color: var(--text);
       font-family: inherit; font-size: .85rem; cursor: pointer;
       appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23676767' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 6l3.5 4 3.5-4'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 12px center;
     }
     .living-sel:focus { outline: none; border-color: var(--sn); }
     .living-amt-display { font-size: .95rem; font-weight: 700; white-space: nowrap; color: var(--sn); }
