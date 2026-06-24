@@ -44,21 +44,13 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* 배경 그라데이션 */
+    /* 배경 — 부드러운 그라데이션만 (titleBg 전체 깔기 제거) */
     .bg-glow {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255,210,199,.55), transparent),
-        radial-gradient(ellipse 50% 40% at 90% 20%, rgba(255,202,103,.2), transparent),
-        linear-gradient(180deg, #fff8f4 0%, var(--bg) 45%);
-    }
-    @media (min-width: 600px) {
-      .bg-glow {
-        background:
-          url("assets/titleBg.png") center top / min(100%, 900px) auto no-repeat,
-          radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255,210,199,.45), transparent),
-          linear-gradient(180deg, #fff8f4 0%, var(--bg) 40%);
-      }
+        radial-gradient(ellipse 90% 55% at 50% -5%, rgba(255,210,199,.28), transparent 65%),
+        radial-gradient(ellipse 45% 35% at 92% 12%, rgba(255,202,103,.1), transparent),
+        linear-gradient(180deg, #fff9f6 0%, var(--bg) 42%);
     }
 
     .app { position: relative; z-index: 1; max-width: 1140px; margin: 0 auto; padding: 32px 20px 64px; }
@@ -67,6 +59,18 @@
     .hero {
       text-align: center;
       padding: 32px 0 36px;
+      position: relative;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      left: 50%; top: -12px;
+      transform: translateX(-50%);
+      width: min(100%, 520px);
+      height: 220px;
+      background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255,210,199,.22), transparent 72%);
+      pointer-events: none;
+      z-index: -1;
     }
     .hero-chars {
       display: flex;
@@ -902,7 +906,6 @@
       box-shadow: var(--shadow-sm);
     }
     .hero h1 { letter-spacing: -.02em; }
-    .hero { position: relative; }
     .main-nav { background: #fff; border: none; }
     .dash-card, .budget-bar-wrap, .section-card, .tracker-page, .living-section, .pcard {
       border: none;
