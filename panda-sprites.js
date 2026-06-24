@@ -14,36 +14,62 @@ const STAGE_LIBRARIES = Object.fromEntries(
   [1, 2, 3, 4, 5, 6].map((id) => [id, buildStageLibrary(id)])
 );
 
-/** 동작 클립별 3컷만 재생 — 좌우반전 매 프레임 교체 제거 */
+/** 동작 클립별 3컷 재생 — 옷·표정·꾸밈이 섞이도록 라운드로빈 */
 function buildStageLibrary(stageId) {
   const pool = PET_POSES.filter((p) => p.stageMin <= stageId);
   const groups = new Map();
 
   for (const p of pool) {
-    const key = `${p.base}:${p.motion}`;
+    const key = `${p.key}:${p.motion}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(p);
   }
 
-  const orderedKeys = [...groups.keys()].sort((a, b) => {
-    const pa = groups.get(a)[0];
-    const pb = groups.get(b)[0];
+  const byStage = [...groups.entries()].sort((a, b) => {
+    const pa = a[1][0];
+    const pb = b[1][0];
     if (pa.stageMin !== pb.stageMin) return pa.stageMin - pb.stageMin;
+    if (pa.outfit !== pb.outfit) return pa.outfit.localeCompare(pb.outfit, "ko");
     return pa.id - pb.id;
   });
 
-  const frames = [];
-  for (const key of orderedKeys) {
-    const poses = groups.get(key);
-    const half = poses.length / 2;
-    const side = poses.slice(0, half);
-    const picks = [side[0], side[2], side[4]].filter(Boolean);
-    if (!picks.length) continue;
+  const buckets = new Map();
+  for (const [gkey, poses] of byStage) {
+    const stage = poses[0].stageMin;
+    if (!buckets.has(stage)) buckets.set(stage, []);
+    buckets.get(stage).push({ gkey, poses });
+  }
 
-    for (const p of picks) {
-      frames.push({ src: p.src, ms: FRAME_MS });
+  const ordered = [];
+  for (const stage of [...buckets.keys()].sort((a, b) => a - b)) {
+    const list = buckets.get(stage);
+    let round = 0;
+    let added = true;
+    while (added) {
+      added = false;
+      for (const { poses } of list) {
+        if (round < poses.length) {
+          ordered.push(poses[round]);
+          added = true;
+        }
+      }
+      round += 1;
     }
-    frames.push({ src: picks[picks.length - 1].src, ms: HOLD_MS });
+  }
+
+  const frames = [];
+  let clip = [];
+  for (const p of ordered) {
+    clip.push(p);
+    if (clip.length >= 3) {
+      for (const f of clip) frames.push({ src: f.src, ms: FRAME_MS });
+      frames.push({ src: clip[clip.length - 1].src, ms: HOLD_MS });
+      clip = [];
+    }
+  }
+  if (clip.length) {
+    for (const f of clip) frames.push({ src: f.src, ms: FRAME_MS });
+    frames.push({ src: clip[clip.length - 1].src, ms: HOLD_MS });
   }
 
   return frames;

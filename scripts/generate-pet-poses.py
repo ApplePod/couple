@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Bake 120+ mascot pose frames from 5 hand-drawn bases + motion curves."""
+"""Bake mascot pose library from full character catalog (outfits, hair, expressions)."""
 
 from __future__ import annotations
 
 import json
 import math
-import os
 from pathlib import Path
 
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = ROOT / "assets" / "pet"
-OUT_DIR = ROOT / "assets" / "pet" / "poses"
+OUT_DIR = SRC_DIR / "poses"
 MANIFEST_JS = ROOT / "pet-poses-manifest.js"
+CATALOG_JS = ROOT / "pet-character-catalog.js"
 
 CANVAS = 200
 ANCHOR_Y = 188
@@ -21,15 +21,151 @@ ANCHOR_X = 100
 DISPLAY_H = 132
 MOTION_SCALE = DISPLAY_H / 132.0
 
-BASES = {
-    "front": {"file": "char-front.png", "stage": 1, "motions": ["stand", "hop", "shy", "happy", "proud"]},
-    "laugh": {"file": "char-laugh.png", "stage": 2, "motions": ["stand", "laugh", "happy", "hop", "shy"]},
-    "wave": {"file": "char-wave.png", "stage": 3, "motions": ["stand", "wave", "hop", "happy", "proud"]},
-    "heart": {"file": "char-heart.png", "stage": 4, "motions": ["stand", "heart", "hop", "happy", "proud"]},
-    "peek": {"file": "char-peek.png", "stage": 5, "motions": ["stand", "peek", "happy", "laugh", "hop"]},
+SAMPLES = [0.0, 0.35, 0.7]
+
+CORE = [
+    {
+        "key": "front",
+        "file": "char-front.png",
+        "stage": 1,
+        "outfit": "물방울 잠옷",
+        "expression": "힘내",
+        "accessory": None,
+        "motions": ["stand", "hop", "shy", "happy", "proud"],
+    },
+    {
+        "key": "laugh",
+        "file": "char-laugh.png",
+        "stage": 2,
+        "outfit": "하늘색 잠옷",
+        "expression": "헤헤",
+        "accessory": None,
+        "motions": ["stand", "laugh", "happy", "hop"],
+    },
+    {
+        "key": "wave",
+        "file": "char-wave.png",
+        "stage": 3,
+        "outfit": "도형 패턴 잠옷",
+        "expression": "반가워",
+        "accessory": None,
+        "motions": ["stand", "wave", "hop", "happy"],
+    },
+    {
+        "key": "heart",
+        "file": "char-heart.png",
+        "stage": 4,
+        "outfit": "물방울 잠옷",
+        "expression": "사랑해",
+        "accessory": None,
+        "motions": ["stand", "heart", "hop", "happy", "proud"],
+    },
+    {
+        "key": "peek",
+        "file": "char-peek.png",
+        "stage": 5,
+        "outfit": "노란 셔츠",
+        "expression": "궁금",
+        "accessory": None,
+        "motions": ["stand", "peek", "happy", "laugh"],
+    },
+    {
+        "key": "pink-shy",
+        "file": "char-pink-shy.png",
+        "stage": 2,
+        "outfit": "핑크 하트 잠옷",
+        "expression": "수줍",
+        "accessory": None,
+        "motions": ["stand", "shy", "happy"],
+    },
+    {
+        "key": "green-wave",
+        "file": "char-green-wave.png",
+        "stage": 3,
+        "outfit": "민트 후드",
+        "expression": "반가워",
+        "accessory": None,
+        "motions": ["stand", "wave", "happy", "hop"],
+    },
+    {
+        "key": "sleep",
+        "file": "char-sleep.png",
+        "stage": 4,
+        "outfit": "물방울 잠옷",
+        "expression": "졸림",
+        "accessory": None,
+        "motions": ["stand", "shy", "happy"],
+    },
+    {
+        "key": "scarf-celebrate",
+        "file": "char-scarf-celebrate.png",
+        "stage": 4,
+        "outfit": "빨간 목도리",
+        "expression": "신남",
+        "accessory": "목도리",
+        "motions": ["happy", "hop", "proud", "laugh"],
+    },
+    {
+        "key": "purple-hop",
+        "file": "char-purple-hop.png",
+        "stage": 5,
+        "outfit": "보라 별 잠옷",
+        "expression": "신남",
+        "accessory": None,
+        "motions": ["hop", "happy", "proud", "stand"],
+    },
+    {
+        "key": "orange-peek",
+        "file": "char-orange-peek.png",
+        "stage": 5,
+        "outfit": "주황 줄티",
+        "expression": "호기심",
+        "accessory": None,
+        "motions": ["peek", "stand", "happy", "shy"],
+    },
+]
+
+HAIR_NAMES = {
+    "01": "리본",
+    "02": "별핀",
+    "03": "클로버",
+    "04": "벚꽃",
+    "05": "왕관",
+    "06": "모자",
+    "07": "삔",
+    "08": "고양이귀",
+    "09": "토끼귀",
 }
 
-SAMPLES = [0.0, 0.22, 0.44, 0.66, 0.88]
+
+def build_catalog() -> list[dict]:
+    catalog = [dict(c) for c in CORE]
+    variants_dir = SRC_DIR / "variants"
+    if not variants_dir.exists():
+        return catalog
+
+    base_meta = {c["key"]: c for c in CORE if not c["key"].endswith("-hair")}
+    for path in sorted(variants_dir.glob("*.png")):
+        stem = path.stem
+        if "-hair" not in stem:
+            continue
+        base_key, hair_part = stem.split("-hair", 1)
+        hair_id = hair_part
+        parent = base_meta.get(base_key)
+        if not parent:
+            continue
+        catalog.append(
+            {
+                "key": stem,
+                "file": f"variants/{path.name}",
+                "stage": min(6, parent["stage"] + 1),
+                "outfit": parent["outfit"],
+                "expression": parent["expression"],
+                "accessory": HAIR_NAMES.get(hair_id, f"헤어{hair_id}"),
+                "motions": parent["motions"][:4],
+            }
+        )
+    return catalog
 
 
 def ease_in_out_sine(t: float) -> float:
@@ -182,42 +318,55 @@ def main() -> None:
     for old in OUT_DIR.glob("pose-*.png"):
         old.unlink()
 
+    catalog = build_catalog()
     manifest: list[dict] = []
     idx = 1
     variation = 0
 
-    for base_id, meta in BASES.items():
-        path = SRC_DIR / meta["file"]
+    for char in catalog:
+        path = SRC_DIR / char["file"]
+        if not path.exists():
+            print("skip missing", path)
+            continue
         base_img = Image.open(path).convert("RGBA")
-        for motion_name in meta["motions"]:
+        for motion_name in char["motions"]:
             motion_fn = MOTIONS[motion_name]
-            for flip in (False, True):
-                for p in SAMPLES:
-                    m = motion_fn(p, variation % 12)
-                    frame = render_pose(base_img, m, flip)
-                    fname = f"pose-{idx:03d}.png"
-                    frame.save(OUT_DIR / fname, optimize=True)
-                    manifest.append(
-                        {
-                            "id": idx,
-                            "src": f"assets/pet/poses/{fname}",
-                            "base": base_id,
-                            "motion": motion_name,
-                            "stageMin": meta["stage"],
-                            "ms": 52 + (variation % 5) * 4,
-                        }
-                    )
-                    idx += 1
-                    variation += 1
+            flip = motion_name in ("wave", "heart")
+            for p in SAMPLES:
+                m = motion_fn(p, variation % 12)
+                frame = render_pose(base_img, m, flip)
+                fname = f"pose-{idx:04d}.png"
+                frame.save(OUT_DIR / fname, optimize=True)
+                manifest.append(
+                    {
+                        "id": idx,
+                        "src": f"assets/pet/poses/{fname}",
+                        "key": char["key"],
+                        "outfit": char["outfit"],
+                        "expression": char["expression"],
+                        "accessory": char["accessory"],
+                        "motion": motion_name,
+                        "stageMin": char["stage"],
+                    }
+                )
+                idx += 1
+                variation += 1
 
-    js = (
-        "/** Auto-generated by scripts/generate-pet-poses.py — do not edit */\n"
+    manifest_js = (
+        "/** Auto-generated by scripts/generate-pet-poses.py */\n"
         f"export const PET_POSE_COUNT = {len(manifest)};\n"
         f"export const PET_POSES = {json.dumps(manifest, ensure_ascii=False, indent=2)};\n"
     )
-    MANIFEST_JS.write_text(js, encoding="utf-8")
+    MANIFEST_JS.write_text(manifest_js, encoding="utf-8")
+
+    catalog_js = (
+        "/** Character catalog — outfits, expressions, accessories */\n"
+        f"export const PET_CHARACTERS = {json.dumps(catalog, ensure_ascii=False, indent=2)};\n"
+    )
+    CATALOG_JS.write_text(catalog_js, encoding="utf-8")
+
+    print(f"Characters: {len(catalog)}")
     print(f"Generated {len(manifest)} poses -> {OUT_DIR}")
-    print(f"Manifest -> {MANIFEST_JS}")
 
 
 if __name__ == "__main__":
