@@ -65,10 +65,13 @@ import {
   calcYearBreakdown, calcCumulative, getForecastYears, countRecordedMonths,
   totalInvested, achievementPct, achievementStatus, planMonthsInYear,
 } from './forecast.js';
-import { getPandaStage, refreshMascotMessage } from './mascot-messages.js';
-import { startPandaAnimation } from './panda-sprites.js';
+import { refreshMascotMessage } from './mascot-messages.js';
+import {
+  startPandaAnimation,
+  schedulePandaCharacterRotation,
+  stopPandaCharacterRotation,
+} from './panda-sprites.js';
 
-let lastMascotStageId = 0;
 let _quoteTimer = null;
 
 function stopMascotQuoteRefresh() {
@@ -1370,11 +1373,7 @@ function renderWilliam() {
 }
 
 function renderForecastMascot(pct, actual, planned) {
-  const stage = getPandaStage(pct);
   const quote = refreshMascotMessage();
-  const scale = (0.88 + stage.id * 0.06).toFixed(3);
-  const grew = lastMascotStageId !== stage.id;
-  lastMascotStageId = stage.id;
   const st = achievementStatus(pct);
   return `<div class="forecast-mascot-slot">
     <div class="forecast-hero-card highlight">
@@ -1382,12 +1381,12 @@ function renderForecastMascot(pct, actual, planned) {
       <div class="fh-value pct-${st}">${planned ? pct + '%' : '—'}</div>
       <div class="fh-sub">실제 ${fmt(actual)} / 예상 ${fmt(planned)}</div>
     </div>
-    <div class="fm-overlay" data-stage="${stage.id}" style="--fm-scale:${scale}">
+    <div class="fm-overlay" style="--fm-scale:1.12">
       <div class="fm-speech">
         <p class="fm-quote">${escHtml(quote)}</p>
       </div>
-      <div class="fm-panda-box${grew ? ' fm-grow' : ''}">
-        <div class="fm-panda-sprite" role="img" aria-label="노랑 판다 ${stage.label}"></div>
+      <div class="fm-panda-box fm-grow">
+        <div class="fm-panda-sprite" role="img" aria-label="노랑 판다"></div>
       </div>
     </div>
   </div>`;
@@ -1403,12 +1402,10 @@ function escHtml(s) {
 
 function attachMascotEvents() {
   stopMascotQuoteRefresh();
-  const overlay = document.querySelector('.fm-overlay');
+  stopPandaCharacterRotation();
   const quoteEl = document.querySelector('.fm-quote');
-  if (overlay) {
-    const stageId = Number(overlay.dataset.stage) || 1;
-    startPandaAnimation(stageId);
-  }
+  startPandaAnimation();
+  schedulePandaCharacterRotation();
   if (quoteEl) scheduleMascotQuoteRefresh(quoteEl);
 }
 
