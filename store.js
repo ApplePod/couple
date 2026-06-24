@@ -197,3 +197,39 @@ export function setSavingsExtra(checks, year, month, person, lines) {
   next[year][month][savingsExtraKey(person)] = lines;
   return next;
 }
+
+export function monthlyExtraKey(person) {
+  return `${person}_monthly_extra`;
+}
+
+export function getMonthlyExtra(checks, year, month, person) {
+  const key = monthlyExtraKey(person);
+  const m = checks?.[year]?.[month]?.[key];
+  return Array.isArray(m) ? m : [];
+}
+
+export function setMonthlyExtra(checks, year, month, person, lines) {
+  const next = structuredClone(checks);
+  if (!next[year]) next[year] = {};
+  if (!next[year][month]) next[year][month] = {};
+  next[year][month][monthlyExtraKey(person)] = lines;
+  return next;
+}
+
+export function hiddenItemsKey(person) {
+  return `${person}_hidden_items`;
+}
+
+export function getHiddenItems(checks, year, month, person) {
+  const key = hiddenItemsKey(person);
+  const m = checks?.[year]?.[month]?.[key];
+  return Array.isArray(m) ? m : [];
+}
+
+export function setHiddenItems(checks, year, month, person, ids) {
+  const next = structuredClone(checks);
+  if (!next[year]) next[year] = {};
+  if (!next[year][month]) next[year][month] = {};
+  next[year][month][hiddenItemsKey(person)] = ids;
+  return next;
+}
