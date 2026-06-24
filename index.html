@@ -799,7 +799,7 @@ function renderCheckRow(person, it) {
   return `<div class="check-item-wrap${hasDetail ? ' has-detail' : ''}" data-person="${person}" data-id="${it.id}">
     <div class="check-item${checked ? ' done' : ''}${hasDetail ? ' expandable' : ''}" data-person="${person}" data-id="${it.id}">
       <input type="checkbox" class="ci-check" data-person="${person}" data-id="${it.id}" ${checked ? 'checked' : ''}>
-      <div class="ci-name">${it.name}${itemSubLabel(it)}${hasDetail ? '<span class="ci-detail-toggle">▸</span>' : ''}</div>
+      <div class="ci-name"><span class="ci-name-main">${it.name}${itemSubLabel(it)}</span><span class="ci-detail-toggle${hasDetail ? '' : ' is-placeholder'}" aria-hidden="true">${hasDetail ? '▸' : ''}</span></div>
       <div class="ci-plan"><span>계획</span>${fmtShort(it.amt)}</div>
       <input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
         placeholder="실제 금액" inputmode="numeric"
@@ -814,11 +814,14 @@ function renderSavingsExtraRow(person, ln) {
     ? formatActualInput(Number(ln.actual)) : '';
   return `<div class="check-item-wrap savings-extra-wrap" data-person="${person}" data-sav-id="${ln.id}">
     <div class="check-item savings-extra-item${ln.checked ? ' done' : ''}">
-      <input type="checkbox" class="se-check" data-person="${person}" data-sav-id="${ln.id}" ${ln.checked ? 'checked' : ''}>
-      <input type="text" class="se-name" data-person="${person}" data-sav-id="${ln.id}" placeholder="항목명 (예: ISA 목돈)" value="${escAttr(ln.name)}">
-      <div class="ci-plan se-plan">—</div>
-      <input type="text" class="se-actual" data-person="${person}" data-sav-id="${ln.id}"
-        placeholder="금액" inputmode="numeric" value="${actual}">
+      <input type="checkbox" class="ci-check se-check" data-person="${person}" data-sav-id="${ln.id}" ${ln.checked ? 'checked' : ''}>
+      <div class="ci-name">
+        <input type="text" class="ci-name-field se-name" data-person="${person}" data-sav-id="${ln.id}" placeholder="항목명 (예: ISA 목돈)" value="${escAttr(ln.name)}">
+        <span class="ci-detail-toggle is-placeholder" aria-hidden="true"></span>
+      </div>
+      <div class="ci-plan"><span>계획</span>—</div>
+      <input type="text" class="ci-actual se-actual" data-person="${person}" data-sav-id="${ln.id}"
+        placeholder="실제 금액" inputmode="numeric" value="${actual}">
       <button type="button" class="se-remove" data-person="${person}" data-sav-id="${ln.id}" title="삭제">×</button>
     </div>
   </div>`;
