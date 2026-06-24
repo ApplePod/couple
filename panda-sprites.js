@@ -7,11 +7,12 @@ import { PET_POSES, PET_POSE_COUNT } from "./pet-poses-manifest.js";
 let _raf = null;
 let _state = null;
 let _charTimer = null;
+let _activeCharacterKey = null;
 
 const FRAME_MS = 105;
 const HOLD_MS = 240;
-const CHAR_ROTATE_MIN_MS = 8000;
-const CHAR_ROTATE_MAX_MS = 25000;
+const CHAR_ROTATE_MIN_MS = 5000;
+const CHAR_ROTATE_MAX_MS = 12000;
 
 const CHARACTER_KEYS = [...new Set(PET_POSES.map((p) => p.key))];
 
@@ -89,6 +90,10 @@ export function getPoseFrames(characterKey) {
   return buildCharacterLibrary(characterKey);
 }
 
+export function getActiveCharacterKey() {
+  return _activeCharacterKey;
+}
+
 function playGrowPop() {
   const box = document.querySelector(".fm-panda-box");
   if (!box) return;
@@ -102,7 +107,12 @@ export function startPandaAnimation(characterKey) {
   const sprite = document.querySelector(".fm-panda-sprite");
   if (!sprite) return;
 
-  const key = characterKey || pickRandomCharacterKey();
+  const key =
+    characterKey ??
+    _activeCharacterKey ??
+    pickRandomCharacterKey();
+  _activeCharacterKey = key;
+
   const frames = getPoseFrames(key);
   if (!frames.length) return;
 
@@ -123,8 +133,8 @@ export function startPandaAnimation(characterKey) {
 
 export function rotatePandaCharacter() {
   if (!document.querySelector(".fm-panda-sprite")) return;
-  const prev = _state?.characterKey;
-  const next = pickRandomCharacterKey(prev);
+  const next = pickRandomCharacterKey(_activeCharacterKey);
+  _activeCharacterKey = next;
   playGrowPop();
   startPandaAnimation(next);
 }
@@ -136,14 +146,19 @@ export function stopPandaCharacterRotation() {
   }
 }
 
-export function schedulePandaCharacterRotation() {
+export function isCharacterRotationScheduled() {
+  return _charTimer != null;
+}
+
+export function schedulePandaCharacterRotation({ force = false } = {}) {
+  if (_charTimer && !force) return;
   stopPandaCharacterRotation();
   const delay =
     CHAR_ROTATE_MIN_MS +
     Math.random() * (CHAR_ROTATE_MAX_MS - CHAR_ROTATE_MIN_MS);
   _charTimer = setTimeout(() => {
     rotatePandaCharacter();
-    schedulePandaCharacterRotation();
+    schedulePandaCharacterRotation({ force: true });
   }, delay);
 }
 

@@ -65,11 +65,11 @@ import {
   calcYearBreakdown, calcCumulative, getForecastYears, countRecordedMonths,
   totalInvested, achievementPct, achievementStatus, planMonthsInYear,
 } from './forecast.js';
-import { refreshMascotMessage } from './mascot-messages.js';
+import { pickMascotMessage, refreshMascotMessage } from './mascot-messages.js';
 import {
   startPandaAnimation,
+  rotatePandaCharacter,
   schedulePandaCharacterRotation,
-  stopPandaCharacterRotation,
 } from './panda-sprites.js';
 
 let _quoteTimer = null;
@@ -94,6 +94,7 @@ function scheduleMascotQuoteRefresh(quoteEl) {
   _quoteTimer = setTimeout(() => {
     if (!document.body.contains(quoteEl)) return;
     popMascotQuote(quoteEl, refreshMascotMessage());
+    rotatePandaCharacter();
     scheduleMascotQuoteRefresh(quoteEl);
   }, delay);
 }
@@ -1373,7 +1374,7 @@ function renderWilliam() {
 }
 
 function renderForecastMascot(pct, actual, planned) {
-  const quote = refreshMascotMessage();
+  const quote = pickMascotMessage();
   const st = achievementStatus(pct);
   return `<div class="forecast-mascot-slot">
     <div class="forecast-hero-card highlight">
@@ -1385,7 +1386,7 @@ function renderForecastMascot(pct, actual, planned) {
       <div class="fm-speech">
         <p class="fm-quote">${escHtml(quote)}</p>
       </div>
-      <div class="fm-panda-box fm-grow">
+      <div class="fm-panda-box">
         <div class="fm-panda-sprite" role="img" aria-label="노랑 판다"></div>
       </div>
     </div>
@@ -1402,7 +1403,6 @@ function escHtml(s) {
 
 function attachMascotEvents() {
   stopMascotQuoteRefresh();
-  stopPandaCharacterRotation();
   const quoteEl = document.querySelector('.fm-quote');
   startPandaAnimation();
   schedulePandaCharacterRotation();
