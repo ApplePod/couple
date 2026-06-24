@@ -798,6 +798,26 @@
       transform-origin: center bottom;
       will-change: transform;
     }
+    .fm-panda-layers {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .fm-panda-layers .fm-layer {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.12s ease-out;
+    }
+    .fm-panda-layers .fm-layer.fm-layer-visible {
+      opacity: 1;
+    }
+    .fm-panda-layers .fm-layer.fm-layer-in {
+      opacity: 1;
+    }
+    .fm-panda-layers .fm-layer.fm-layer-out {
+      opacity: 0;
+    }
     .fm-panda-art {
       display: block;
       width: 100%;
@@ -807,10 +827,16 @@
       user-select: none;
       -webkit-user-drag: none;
       filter: drop-shadow(0 2px 0 rgba(26, 26, 26, 0.12));
-      transition: opacity 0.28s ease;
     }
-    .fm-panda-art.fm-panda-fade {
-      opacity: 0.15;
+    .fm-panda-bust {
+      width: 86%;
+      height: 86%;
+      left: 7%;
+      top: 8%;
+      object-position: center center;
+    }
+    .fm-panda-flip {
+      transform: scaleX(-1);
     }
     .fm-panda-egg {
       position: relative;
