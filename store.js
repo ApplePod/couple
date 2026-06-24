@@ -160,3 +160,21 @@ export function setDetail(checks, year, month, person, itemId, detail) {
   next[year][month][detailKey(person, itemId)] = detail;
   return next;
 }
+
+export function savingsExtraKey(person) {
+  return `${person}_savings_extra`;
+}
+
+export function getSavingsExtra(checks, year, month, person) {
+  const key = savingsExtraKey(person);
+  const m = checks?.[year]?.[month]?.[key];
+  return Array.isArray(m) ? m : [];
+}
+
+export function setSavingsExtra(checks, year, month, person, lines) {
+  const next = structuredClone(checks);
+  if (!next[year]) next[year] = {};
+  if (!next[year][month]) next[year][month] = {};
+  next[year][month][savingsExtraKey(person)] = lines;
+  return next;
+}

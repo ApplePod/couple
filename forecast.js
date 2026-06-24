@@ -53,7 +53,7 @@ export function aggregateProjectedYear(year, { yjItems, snItems }) {
     for (const it of items) {
       if (!isForecastItem(it)) continue;
 
-      if (it.julyOnly && it.fromSavings) {
+      if (it.julyOnly && it.forecastOnly) {
         if (year === PLAN_START.year) bucket[it.id] += it.amt;
         continue;
       }
