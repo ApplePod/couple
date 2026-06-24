@@ -1350,13 +1350,8 @@ function renderForecastMascot(pct, actual, planned) {
   const grew = lastMascotStageId !== stage.id;
   lastMascotStageId = stage.id;
   const st = achievementStatus(pct);
-  const milestones = PANDA_STAGES.map((s) => {
-    const at = (s.min + s.max) / 2;
-    const reached = pct >= s.min;
-    return `<span class="fm-milestone${reached ? ' reached' : ''}" style="left:${at}%" title="${s.label}"></span>`;
-  }).join('');
-  return `<div class="forecast-hero-card forecast-mascot-card highlight">
-    <div class="fm-wrap" data-stage="${stage.id}" style="--fm-scale:${scale};--fm-pct:${pct}">
+  return `<div class="forecast-mascot-slot">
+    <div class="fm-overlay" data-stage="${stage.id}" style="--fm-scale:${scale}">
       <div class="fm-speech">
         <button type="button" class="fm-quote-refresh" title="다른 멘트 보기" aria-label="다른 멘트">↻</button>
         <p class="fm-quote">${escHtml(quote)}</p>
@@ -1364,13 +1359,11 @@ function renderForecastMascot(pct, actual, planned) {
       <div class="fm-panda-box${grew ? ' fm-grow' : ''}">
         <img class="fm-panda-img" src="${stage.img}" alt="노랑 판다 ${stage.label}" width="120" height="120" loading="lazy">
       </div>
-      <div class="fm-growth-bar" aria-hidden="true">
-        <div class="fm-growth-fill" style="width:${planned ? pct : 0}%"></div>
-        ${milestones}
-      </div>
+    </div>
+    <div class="forecast-hero-card highlight">
       <div class="fh-label">전체 누적 달성</div>
       <div class="fh-value pct-${st}">${planned ? pct + '%' : '—'}</div>
-      <div class="fh-sub">실제 ${fmt(actual)} / 예상 ${fmt(planned)} · <span class="fm-stage-label">${stage.label}</span></div>
+      <div class="fh-sub">실제 ${fmt(actual)} / 예상 ${fmt(planned)}</div>
     </div>
   </div>`;
 }
