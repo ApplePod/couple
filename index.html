@@ -65,10 +65,35 @@ import {
   calcYearBreakdown, calcCumulative, getForecastYears, countRecordedMonths,
   totalInvested, achievementPct, achievementStatus, planMonthsInYear,
 } from './forecast.js';
-import { getPandaStage, pickMascotMessage, refreshMascotMessage } from './mascot-messages.js';
+import { getPandaStage, refreshMascotMessage } from './mascot-messages.js';
 import { startPandaAnimation } from './panda-sprites.js';
 
 let lastMascotStageId = 0;
+let _quoteTimer = null;
+
+function stopMascotQuoteRefresh() {
+  if (_quoteTimer) {
+    clearTimeout(_quoteTimer);
+    _quoteTimer = null;
+  }
+}
+
+function popMascotQuote(quoteEl, text) {
+  quoteEl.textContent = text;
+  quoteEl.classList.remove('fm-quote-pop');
+  void quoteEl.offsetWidth;
+  quoteEl.classList.add('fm-quote-pop');
+}
+
+function scheduleMascotQuoteRefresh(quoteEl) {
+  stopMascotQuoteRefresh();
+  const delay = 5000 + Math.random() * 15000;
+  _quoteTimer = setTimeout(() => {
+    if (!document.body.contains(quoteEl)) return;
+    popMascotQuote(quoteEl, refreshMascotMessage());
+    scheduleMascotQuoteRefresh(quoteEl);
+  }, delay);
+}
 
 const fmt = n => n.toLocaleString('ko-KR') + '원';
 const fmtShort = n => {
@@ -1346,7 +1371,7 @@ function renderWilliam() {
 
 function renderForecastMascot(pct, actual, planned) {
   const stage = getPandaStage(pct);
-  const quote = pickMascotMessage();
+  const quote = refreshMascotMessage();
   const scale = (0.88 + stage.id * 0.06).toFixed(3);
   const grew = lastMascotStageId !== stage.id;
   lastMascotStageId = stage.id;
@@ -1378,6 +1403,7 @@ function escHtml(s) {
 }
 
 function attachMascotEvents() {
+  stopMascotQuoteRefresh();
   const overlay = document.querySelector('.fm-overlay');
   const btn = document.querySelector('.fm-quote-refresh');
   const quoteEl = document.querySelector('.fm-quote');
@@ -1385,13 +1411,13 @@ function attachMascotEvents() {
     const stageId = Number(overlay.dataset.stage) || 1;
     startPandaAnimation(stageId);
   }
-  if (!btn || !quoteEl) return;
+  if (!quoteEl) return;
+  scheduleMascotQuoteRefresh(quoteEl);
+  if (!btn) return;
   btn.onclick = (e) => {
     e.preventDefault();
-    quoteEl.textContent = refreshMascotMessage();
-    quoteEl.classList.remove('fm-quote-pop');
-    void quoteEl.offsetWidth;
-    quoteEl.classList.add('fm-quote-pop');
+    popMascotQuote(quoteEl, refreshMascotMessage());
+    scheduleMascotQuoteRefresh(quoteEl);
   };
 }
 
