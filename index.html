@@ -65,6 +65,9 @@ import {
   calcYearBreakdown, calcCumulative, getForecastYears, countRecordedMonths,
   totalInvested, achievementPct, achievementStatus, planMonthsInYear,
 } from './forecast.js';
+import { getPandaStage, pickMascotMessage, refreshMascotMessage, PANDA_STAGES } from './mascot-messages.js';
+
+let lastMascotStageId = 0;
 
 const fmt = n => n.toLocaleString('ko-KR') + '원';
 const fmtShort = n => {
@@ -929,7 +932,7 @@ function renderMonthlyExtraRow(person, ln) {
       ${renderDepositPill(deposit, `data-person="${person}" data-extra-id="${ln.id}"`)}
       <div class="ci-plan ci-plan-edit">
         <span>계획</span>
-        <input type="text" class="me-plan" data-person="${person}" data-extra-id="${ln.id}" placeholder="금액" inputmode="numeric" value="${plan}">
+        <input type="text" class="me-plan" data-person="${person}" data-extra-id="${ln.id}" placeholder="—" inputmode="numeric" value="${plan}">
       </div>
       <input type="text" class="ci-actual me-actual" data-person="${person}" data-extra-id="${ln.id}"
         placeholder="실제 금액" inputmode="numeric" value="${actual}">
@@ -1340,6 +1343,59 @@ function renderWilliam() {
     <div class="william-amt">월 ${fmt(650000)}</div>`;
 }
 
+function renderForecastMascot(pct, actual, planned) {
+  const stage = getPandaStage(pct);
+  const quote = pickMascotMessage();
+  const scale = (0.82 + stage.id * 0.07).toFixed(3);
+  const grew = lastMascotStageId !== stage.id;
+  lastMascotStageId = stage.id;
+  const st = achievementStatus(pct);
+  const milestones = PANDA_STAGES.map((s) => {
+    const at = (s.min + s.max) / 2;
+    const reached = pct >= s.min;
+    return `<span class="fm-milestone${reached ? ' reached' : ''}" style="left:${at}%" title="${s.label}"></span>`;
+  }).join('');
+  return `<div class="forecast-hero-card forecast-mascot-card highlight">
+    <div class="fm-wrap" data-stage="${stage.id}" style="--fm-scale:${scale};--fm-pct:${pct}">
+      <div class="fm-speech">
+        <button type="button" class="fm-quote-refresh" title="다른 멘트 보기" aria-label="다른 멘트">↻</button>
+        <p class="fm-quote">${escHtml(quote)}</p>
+      </div>
+      <div class="fm-panda-box${grew ? ' fm-grow' : ''}">
+        <img class="fm-panda-img" src="${stage.img}" alt="노랑 판다 ${stage.label}" width="120" height="120" loading="lazy">
+      </div>
+      <div class="fm-growth-bar" aria-hidden="true">
+        <div class="fm-growth-fill" style="width:${planned ? pct : 0}%"></div>
+        ${milestones}
+      </div>
+      <div class="fh-label">전체 누적 달성</div>
+      <div class="fh-value pct-${st}">${planned ? pct + '%' : '—'}</div>
+      <div class="fh-sub">실제 ${fmt(actual)} / 예상 ${fmt(planned)} · <span class="fm-stage-label">${stage.label}</span></div>
+    </div>
+  </div>`;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function attachMascotEvents() {
+  const btn = document.querySelector('.fm-quote-refresh');
+  const quoteEl = document.querySelector('.fm-quote');
+  if (!btn || !quoteEl) return;
+  btn.onclick = (e) => {
+    e.preventDefault();
+    quoteEl.textContent = refreshMascotMessage();
+    quoteEl.classList.remove('fm-quote-pop');
+    void quoteEl.offsetWidth;
+    quoteEl.classList.add('fm-quote-pop');
+  };
+}
+
 function renderForecast() {
   const opts = { yjItems: YJ_CHECK_ITEMS, snItems: SN_CHECK_ITEMS };
   const actualByYear = aggregateActualInvestments(budgetChecks, getActual, opts);
@@ -1435,9 +1491,12 @@ function renderForecast() {
     }).join('');
     const totalPct = achievementPct(sumAct, sumPlan);
     const totalSt = achievementStatus(totalPct);
-    const limit = cat.limitNote ? ` <span class="fc-cat-limit" style="font-size:.6rem">${cat.limitNote}</span>` : '';
+    const limit = cat.limitNote ? `<div class="ft-item-limit">${cat.limitNote}</div>` : '';
     return `<tr>
-      <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cat.color};margin-right:6px"></span>${cat.name}${limit}</td>
+      <td class="ft-item-col">
+        <div class="ft-item-name"><span class="ft-item-dot" style="background:${cat.color}"></span>${cat.name}</div>
+        ${limit}
+      </td>
       ${cells}
       <td class="col-planned">${sumPlan ? fmt(sumPlan) : '—'}</td>
       <td class="col-actual">${sumAct ? fmt(sumAct) : '—'}</td>
@@ -1446,11 +1505,16 @@ function renderForecast() {
   }).join('');
 
   const yearColHead = years.map((y) =>
-    `<th colspan="3">${y}년</th>`
+    `<th colspan="3" class="ft-year-head">${y}년</th>`
   ).join('');
   const subColHead = years.map(() =>
-    `<th>예상</th><th>실제</th><th>달성</th>`
+    `<th class="ft-sub-planned">예상</th><th class="ft-sub-actual">실제</th><th class="ft-sub-pct">달성</th>`
   ).join('');
+
+  const colgroup = `<colgroup>
+    <col class="ft-col-item">
+    ${'<col class="ft-col-planned"><col class="ft-col-actual"><col class="ft-col-pct">'.repeat(years.length + 1)}
+  </colgroup>`;
 
   const badge2026 = fy === 2026
     ? `<div class="forecast-badge-2026">🎯 ${fy}년 — ${planMonths}개월 계획 · IRP·연금저축 한도 최대 납입 목표</div>` : '';
@@ -1480,11 +1544,7 @@ function renderForecast() {
         <div class="fh-value actual">${actualYear.total ? fmt(actualYear.total) : '—'}</div>
         <div class="fh-sub">${monthCount}개월 기록</div>
       </div>
-      <div class="forecast-hero-card">
-        <div class="fh-label">전체 누적 달성</div>
-        <div class="fh-value pct-${achievementStatus(grandPct)}">${grandPlanned ? grandPct + '%' : '—'}</div>
-        <div class="fh-sub">실제 ${fmt(grandActual)} / 예상 ${fmt(grandPlanned)}</div>
-      </div>
+      ${renderForecastMascot(grandPct, grandActual, grandPlanned)}
     </div>
     <div class="fc-compare-section">
       <h4>${fy}년 항목별 달성</h4>
@@ -1500,14 +1560,15 @@ function renderForecast() {
     <div class="fc-chart">${chartRows}</div>
     <div class="forecast-table-wrap">
       <table class="forecast-table">
+        ${colgroup}
         <thead>
-          <tr><th rowspan="2">항목</th>${yearColHead}<th colspan="3">합계</th></tr>
-          <tr>${subColHead}<th>예상</th><th>실제</th><th>달성</th></tr>
+          <tr><th rowspan="2" class="ft-item-head">항목</th>${yearColHead}<th colspan="3" class="ft-year-head">합계</th></tr>
+          <tr>${subColHead}<th class="ft-sub-planned">예상</th><th class="ft-sub-actual">실제</th><th class="ft-sub-pct">달성</th></tr>
         </thead>
         <tbody>
           ${tableRows}
           <tr class="total-row">
-            <td>연간 합계</td>
+            <td class="ft-item-col ft-summary-label">연간 합계</td>
             ${years.map((y) => {
               const p = calcYearBreakdown(projectedByYear, y).total;
               const a = calcYearBreakdown(actualByYear, y).total;
@@ -1520,7 +1581,7 @@ function renderForecast() {
             <td class="col-pct ${achievementStatus(grandPct)}">${grandPlanned ? grandPct + '%' : '—'}</td>
           </tr>
           <tr class="cum-row">
-            <td>누적 합계</td>
+            <td class="ft-item-col ft-summary-label">누적 합계</td>
             ${years.map((y) => {
               const p = cumPlanned[y]?.cumulative || 0;
               const a = cumActual[y]?.cumulative || 0;
@@ -1547,6 +1608,7 @@ function renderForecast() {
     forecastYear = +btn.dataset.fy;
     renderForecast();
   };
+  attachMascotEvents();
 }
 
 // 메인 탭 (계획 / 체크리스트)
