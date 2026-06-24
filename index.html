@@ -229,6 +229,84 @@
       background: var(--amber-dim); color: var(--amber);
       margin-left: 6px; vertical-align: middle;
     }
+    .tag-auto {
+      display: inline-block; font-size: .65rem; font-weight: 600;
+      padding: 2px 7px; border-radius: 4px;
+      background: rgba(91,141,239,.15); color: var(--yj);
+      margin-left: 6px; vertical-align: middle;
+    }
+    .pcard.sn .tag-auto { background: var(--sn-glow); color: var(--sn); }
+
+    /* 연간 체크 (시온) */
+    .tracker-section {
+      margin-top: 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      border-top: 3px solid var(--sn);
+    }
+    .tracker-header {
+      display: flex; flex-wrap: wrap; align-items: center;
+      justify-content: space-between; gap: 12px; margin-bottom: 20px;
+    }
+    .tracker-header h3 { font-size: 1.1rem; font-weight: 800; }
+    .sync-status {
+      font-size: .78rem; font-weight: 600; padding: 6px 14px;
+      border-radius: 100px; background: var(--surface2); color: var(--muted);
+    }
+    .sync-status.supabase { background: var(--green-dim); color: var(--green); }
+    .sync-status.saving { background: var(--amber-dim); color: var(--amber); }
+    .sync-status.error { background: var(--red-dim); color: var(--red); }
+
+    .year-tabs, .month-tabs {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .year-tab, .month-tab {
+      padding: 10px 20px; border-radius: 100px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--muted);
+      font-family: inherit; font-size: .85rem; font-weight: 700; cursor: pointer;
+      transition: all .2s;
+    }
+    .year-tab.active { background: var(--sn-glow); border-color: var(--sn); color: var(--sn); }
+    .month-tab { padding: 8px 14px; font-size: .8rem; }
+    .month-tab.active { background: var(--sn); border-color: var(--sn); color: #fff; }
+
+    .tracker-progress {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+      font-size: .82rem; color: var(--muted);
+    }
+    .tracker-progress .bar {
+      flex: 1; height: 8px; background: var(--surface2); border-radius: 100px; overflow: hidden;
+    }
+    .tracker-progress .bar-fill {
+      height: 100%; background: linear-gradient(90deg, var(--sn), #c99dfa);
+      border-radius: 100px; transition: width .3s;
+    }
+
+    .check-list { display: flex; flex-direction: column; gap: 8px; }
+    .check-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; background: var(--surface2);
+      border-radius: var(--radius-sm); cursor: pointer;
+      border: 1px solid transparent; transition: all .15s;
+      user-select: none;
+    }
+    .check-item:hover { border-color: rgba(176,124,247,.25); }
+    .check-item.done { background: var(--green-dim); border-color: rgba(52,211,153,.2); }
+    .check-item input {
+      width: 20px; height: 20px; accent-color: var(--sn); cursor: pointer; flex-shrink: 0;
+    }
+    .check-item .ci-name { flex: 1; font-size: .9rem; font-weight: 600; }
+    .check-item .ci-name small { display: block; font-size: .72rem; color: var(--muted); font-weight: 500; margin-top: 2px; }
+    .check-item .ci-amt { font-size: .88rem; font-weight: 700; color: var(--muted); }
+    .check-item.done .ci-amt { color: var(--green); }
+    .check-item.done .ci-name { text-decoration: line-through; opacity: .75; }
+
+    .config-hint {
+      margin-top: 16px; padding: 14px 16px; border-radius: var(--radius-sm);
+      background: var(--amber-dim); font-size: .78rem; color: var(--amber); line-height: 1.6;
+    }
 
     /* 하단 합계 */
     .pcard-footer { padding: 16px 20px 24px; }
@@ -472,12 +550,17 @@
 
   <div class="living-section" id="living-section"></div>
 
+  <div class="tracker-section" id="tracker-section"></div>
+
   <footer>
     공과금은 2인 가구 투룸 12평 기준 예상치 · 영재 ISA 목돈 2천만원 7월 일시불 (월 합계 제외)
   </footer>
 </div>
 
-<script>
+<script src="supabase-config.js"></script>
+<script type="module">
+import { initStore, loadChecks, saveChecks, getCheck, setCheck } from './store.js';
+
 const fmt = n => n.toLocaleString('ko-KR') + '원';
 const fmtShort = n => {
   if (n >= 10000) return (n / 10000).toFixed(0) + '만원';
@@ -492,19 +575,19 @@ const CAT_EMOJI = {
 const YJ = {
   key: 'yj', name: '영재', income: 5124120,
   items: [
-    { cat: '저축·투자', name: 'IRP', note: 'ETF 장투 · 자동이체', amt: 500000 },
-    { cat: '저축·투자', name: '연금저축펀드', note: '고영 ETF 장투 · 자동이체', amt: 1000000 },
-    { cat: '저축·투자', name: '청년미래적금', note: '자동이체', amt: 500000 },
-    { cat: '저축·투자', name: '국장 투자', note: '월 투자', amt: 500000 },
-    { cat: '저축', name: '주택청약', note: '자동이체', amt: 250000 },
-    { cat: '주거·생활', name: '주거비', note: '', amt: 750000 },
-    { cat: '주거·생활', name: '월세 대출이자', note: '', amt: 130000 },
-    { cat: '주거·생활', name: '용돈', note: '', amt: 700000 },
-    { cat: '주거·생활', name: '전기세', note: '2인 투룸 12평', amt: 40000, estimate: true },
-    { cat: '주거·생활', name: '가스료', note: '2인 투룸 12평', amt: 30000, estimate: true },
-    { cat: '주거·생활', name: '수도요금', note: '2인 투룸 12평', amt: 20000, estimate: true },
-    { cat: '주거·생활', name: '인터넷', note: '2인 투룸 12평', amt: 35000, estimate: true },
-    { cat: '할부', name: '윌리엄', note: '780만 · 무이자 12개월', amt: 650000 },
+    { cat: '저축·투자', name: 'IRP', note: 'ETF 장투', amt: 500000, auto: true },
+    { cat: '저축·투자', name: '연금저축펀드', note: '고영 ETF 장투', amt: 1000000, auto: true },
+    { cat: '저축·투자', name: '청년미래적금', note: '', amt: 500000, auto: true },
+    { cat: '저축·투자', name: '국장 투자', note: '월 투자', amt: 500000, auto: true },
+    { cat: '저축', name: '주택청약', note: '', amt: 250000, auto: true },
+    { cat: '주거·생활', name: '주거비', note: '', amt: 750000, auto: true },
+    { cat: '주거·생활', name: '월세 대출이자', note: '', amt: 130000, auto: true },
+    { cat: '주거·생활', name: '용돈', note: '직접 관리', amt: 700000, auto: false },
+    { cat: '주거·생활', name: '전기세', note: '2인 투룸 12평', amt: 40000, estimate: true, auto: true },
+    { cat: '주거·생활', name: '가스료', note: '2인 투룸 12평', amt: 30000, estimate: true, auto: true },
+    { cat: '주거·생활', name: '수도요금', note: '2인 투룸 12평', amt: 20000, estimate: true, auto: true },
+    { cat: '주거·생활', name: '인터넷', note: '2인 투룸 12평', amt: 35000, estimate: true, auto: true },
+    { cat: '할부', name: '윌리엄', note: '780만 · 무이자 12개월', amt: 650000, auto: true },
   ],
   isa: {
     title: 'ISA (3~5년)',
@@ -519,15 +602,15 @@ const YJ = {
 const SN = {
   key: 'sn', name: '시온', income: 5418470,
   items: [
-    { cat: '생활', name: '용돈', note: '', amt: 700000 },
-    { cat: '생활', name: '여행비', note: '국내 2번 · 해외 1번', amt: 200000 },
-    { cat: '저축·투자', name: 'IRP', note: '자동이체', amt: 500000 },
-    { cat: '저축·투자', name: '연금저축펀드', note: '자동이체', amt: 1000000 },
-    { cat: '저축', name: '주택청약', note: '자동이체', amt: 250000 },
-    { cat: '저축', name: '청년도약적금', note: '자동이체', amt: 700000 },
-    { cat: '투자', name: '국장', note: '', amt: 300000 },
-    { cat: '투자', name: '미국장', note: '', amt: 300000 },
-    { cat: '투자', name: '코인 + 금', note: '', amt: 200000 },
+    { cat: '생활', name: '용돈', note: '직접 관리', amt: 700000, auto: false },
+    { cat: '생활', name: '여행비', note: '국내 2번 · 해외 1번', amt: 200000, auto: false },
+    { cat: '저축·투자', name: 'IRP', note: '', amt: 500000, auto: true },
+    { cat: '저축·투자', name: '연금저축펀드', note: '', amt: 1000000, auto: true },
+    { cat: '저축', name: '주택청약', note: '', amt: 250000, auto: true },
+    { cat: '저축', name: '청년도약적금', note: '', amt: 700000, auto: true },
+    { cat: '투자', name: '국장', note: '', amt: 300000, auto: true },
+    { cat: '투자', name: '미국장', note: '', amt: 300000, auto: true },
+    { cat: '투자', name: '코인 + 금', note: '', amt: 200000, auto: true },
   ],
   isa: {
     title: 'ISA',
@@ -536,6 +619,29 @@ const SN = {
     rows: [{ label: '월 납입', amt: 500000 }],
   },
 };
+
+/* 시온 연간 체크 항목 */
+const TRACKER_YEARS = [2026, 2027];
+const MONTH_LABELS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+const SN_CHECK_ITEMS = [
+  { id: 'isa', name: 'ISA', note: '자동이체', amt: 500000, auto: true },
+  { id: 'irp', name: 'IRP', note: '자동이체', amt: 500000, auto: true },
+  { id: 'pension', name: '연금저축펀드', note: '자동이체', amt: 1000000, auto: true },
+  { id: 'housing', name: '주택청약', note: '자동이체', amt: 250000, auto: true },
+  { id: 'youth', name: '청년도약적금', note: '자동이체', amt: 700000, auto: true },
+  { id: 'kr', name: '국장 투자', note: '자동이체', amt: 300000, auto: true },
+  { id: 'us', name: '미국장 투자', note: '자동이체', amt: 300000, auto: true },
+  { id: 'crypto', name: '코인 + 금', note: '자동이체', amt: 200000, auto: true },
+  { id: 'pocket', name: '용돈', note: '직접 관리', amt: 700000, auto: false },
+  { id: 'travel', name: '여행비', note: '국내2 · 해외1', amt: 200000, auto: false },
+];
+
+let budgetChecks = loadChecks();
+let trackerYear = TRACKER_YEARS[0];
+let trackerMonth = '7';
+let saveTimer = null;
+let storeMode = 'local';
 
 function sum(items) { return items.reduce((s, i) => s + i.amt, 0); }
 
@@ -570,9 +676,13 @@ function renderPersonCard(person) {
     body += `<div class="cat-block">
       <div class="cat-head"><span class="emoji">${CAT_EMOJI[cat] || '•'}</span>${cat}</div>`;
     for (const item of person.items.filter(i => i.cat === cat)) {
+      const tags = [
+        item.estimate ? '<span class="tag-est">예상</span>' : '',
+        item.auto ? '<span class="tag-auto">자동이체</span>' : '',
+      ].join('');
       body += `<div class="item-row">
         <div class="item-left">
-          <div class="item-name">${item.name}${item.estimate ? '<span class="tag-est">예상</span>' : ''}</div>
+          <div class="item-name">${item.name}${tags}</div>
           ${item.note ? `<div class="item-note">${item.note}</div>` : ''}
         </div>
         <div class="item-amt${item.estimate ? ' est' : ''}">${fmt(item.amt)}</div>
@@ -854,6 +964,91 @@ function renderLivingBudget() {
   applyPreset('normal');
 }
 
+/* ── 시온 연간 체크 ── */
+function setSyncStatus(state, text) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.className = 'sync-status' + (state ? ' ' + state : '');
+  el.textContent = text;
+}
+
+function scheduleSave() {
+  setSyncStatus('saving', '저장 중…');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const res = await saveChecks(budgetChecks);
+    if (res.ok && res.mode === 'supabase') setSyncStatus('supabase', 'Supabase 저장됨');
+    else if (res.ok) setSyncStatus('', '브라우저에 저장됨');
+    else setSyncStatus('error', '저장 실패 — 로컬만');
+  }, 400);
+}
+
+function renderTracker() {
+  const done = SN_CHECK_ITEMS.filter(it =>
+    getCheck(budgetChecks, trackerYear, trackerMonth, it.id)).length;
+  const total = SN_CHECK_ITEMS.length;
+  const pct = total ? (done / total * 100) : 0;
+
+  const yearBtns = TRACKER_YEARS.map(y =>
+    `<button class="year-tab${y === trackerYear ? ' active' : ''}" data-year="${y}">${y}년</button>`
+  ).join('');
+
+  const monthBtns = MONTH_LABELS.map((lbl, i) => {
+    const m = String(i + 1);
+    return `<button class="month-tab${m === trackerMonth ? ' active' : ''}" data-month="${m}">${lbl}</button>`;
+  }).join('');
+
+  const checks = SN_CHECK_ITEMS.map(it => {
+    const checked = getCheck(budgetChecks, trackerYear, trackerMonth, it.id);
+    return `<label class="check-item${checked ? ' done' : ''}">
+      <input type="checkbox" data-id="${it.id}" ${checked ? 'checked' : ''}>
+      <div class="ci-name">${it.name}${it.auto ? '<small>자동이체</small>' : '<small>직접 관리</small>'}</div>
+      <div class="ci-amt">${fmt(it.amt)}</div>
+    </label>`;
+  }).join('');
+
+  const sbHint = storeMode === 'local'
+    ? `<div class="config-hint">⚠️ Supabase 미연결 — 지금은 이 브라우저에만 저장됩니다. <code>supabase-config.js</code>에 URL·anon key를 넣으면 둘이 실시간 동기화됩니다.</div>`
+    : '';
+
+  document.getElementById('tracker-section').innerHTML = `
+    <div class="tracker-header">
+      <h3>✅ 시온 · 월별 체크리스트</h3>
+      <span class="sync-status" id="sync-status">${storeMode === 'supabase' ? 'Supabase 연결됨' : '로컬 저장'}</span>
+    </div>
+    <div class="year-tabs" id="year-tabs">${yearBtns}</div>
+    <div class="month-tabs" id="month-tabs">${monthBtns}</div>
+    <div class="tracker-progress">
+      <span>${trackerYear}년 ${trackerMonth}월</span>
+      <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <strong>${done}/${total}</strong>
+    </div>
+    <div class="check-list" id="check-list">${checks}</div>
+    ${sbHint}`;
+
+  document.getElementById('year-tabs').onclick = e => {
+    const btn = e.target.closest('[data-year]');
+    if (!btn) return;
+    trackerYear = +btn.dataset.year;
+    renderTracker();
+  };
+
+  document.getElementById('month-tabs').onclick = e => {
+    const btn = e.target.closest('[data-month]');
+    if (!btn) return;
+    trackerMonth = btn.dataset.month;
+    renderTracker();
+  };
+
+  document.getElementById('check-list').onchange = e => {
+    const cb = e.target.closest('input[type=checkbox]');
+    if (!cb) return;
+    budgetChecks = setCheck(budgetChecks, trackerYear, trackerMonth, cb.dataset.id, cb.checked);
+    scheduleSave();
+    renderTracker();
+  };
+}
+
 function renderWilliam() {
   document.getElementById('william-section').innerHTML = `
     <div class="william-icon">📦</div>
@@ -885,6 +1080,13 @@ renderDashboard(yjExp, snExp);
 renderISA();
 renderWilliam();
 renderLivingBudget();
+
+const store = await initStore((remote) => {
+  budgetChecks = remote;
+  renderTracker();
+});
+storeMode = store.mode;
+renderTracker();
 </script>
 </body>
 </html>
