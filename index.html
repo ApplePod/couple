@@ -457,6 +457,116 @@
     .forecast-note {
       margin-top: 16px; font-size: .75rem; color: var(--muted); line-height: 1.7;
     }
+    .forecast-year-tabs {
+      display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .forecast-year-tab {
+      padding: 10px 18px; border-radius: 100px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--muted);
+      font-family: inherit; font-size: .85rem; font-weight: 700; cursor: pointer;
+    }
+    .forecast-year-tab.active {
+      background: linear-gradient(135deg, rgba(91,141,239,.2), rgba(176,124,247,.2));
+      border-color: rgba(255,255,255,.12); color: #fff;
+    }
+    .forecast-hero { grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 900px) { .forecast-hero { grid-template-columns: repeat(2, 1fr); } }
+    .forecast-hero-card .fh-sub {
+      font-size: .68rem; color: var(--muted); margin-top: 4px;
+    }
+    .forecast-hero-card .fh-value.planned { color: var(--amber); font-size: 1.1rem; }
+    .forecast-hero-card .fh-value.actual { color: var(--green); }
+    .forecast-hero-card .fh-value.pct-done { color: var(--green); }
+    .forecast-hero-card .fh-value.pct-good { color: #a3e635; }
+    .forecast-hero-card .fh-value.pct-mid { color: var(--amber); }
+    .forecast-hero-card .fh-value.pct-low { color: var(--red); }
+    .fc-compare-section { margin-bottom: 28px; }
+    .fc-compare-section h4 {
+      font-size: .9rem; font-weight: 800; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .fc-cat-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+    }
+    @media (max-width: 700px) { .fc-cat-grid { grid-template-columns: 1fr; } }
+    .fc-cat-card {
+      padding: 16px; border-radius: var(--radius-sm);
+      background: var(--surface); border: 1px solid var(--border);
+    }
+    .fc-cat-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 8px; margin-bottom: 12px;
+    }
+    .fc-cat-name { font-size: .88rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .fc-cat-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .fc-cat-limit {
+      font-size: .62rem; padding: 3px 8px; border-radius: 100px;
+      background: var(--amber-dim); color: var(--amber); font-weight: 600; white-space: nowrap;
+    }
+    .fc-cat-nums {
+      display: flex; justify-content: space-between; font-size: .75rem;
+      margin-bottom: 8px; color: var(--muted);
+    }
+    .fc-cat-nums strong { color: var(--text); font-weight: 700; }
+    .fc-dual-bar {
+      height: 10px; background: var(--surface2); border-radius: 100px;
+      overflow: hidden; position: relative; margin-bottom: 6px;
+    }
+    .fc-dual-bar .planned {
+      position: absolute; inset: 0; border-radius: 100px;
+      background: rgba(251,191,36,.25); border: 1px solid rgba(251,191,36,.4);
+    }
+    .fc-dual-bar .actual {
+      position: absolute; left: 0; top: 0; height: 100%; border-radius: 100px;
+      transition: width .4s ease;
+    }
+    .fc-cat-foot {
+      display: flex; justify-content: space-between; font-size: .72rem;
+    }
+    .fc-cat-pct { font-weight: 800; }
+    .fc-cat-pct.done { color: var(--green); }
+    .fc-cat-pct.good { color: #a3e635; }
+    .fc-cat-pct.mid { color: var(--amber); }
+    .fc-cat-pct.low { color: var(--red); }
+    .fc-cat-remain { color: var(--muted); }
+    .fc-year-row { grid-template-columns: 52px 1fr 100px 100px; }
+    @media (max-width: 700px) {
+      .fc-year-row { grid-template-columns: 44px 1fr; }
+      .fc-year-plan, .fc-year-total { grid-column: 2; text-align: left; font-size: .78rem; }
+    }
+    .fc-year-plan { font-size: .82rem; font-weight: 600; color: var(--amber); text-align: right; }
+    .fc-bar-wrap { position: relative; min-width: 0; }
+    .fc-bar-planned {
+      height: 40px; background: var(--surface2); border-radius: 8px;
+      overflow: hidden; display: flex; border: 1px dashed rgba(251,191,36,.35);
+    }
+    .fc-bar-actual-overlay {
+      position: absolute; left: 0; top: 0; height: 40px; width: 100%;
+      display: flex; border-radius: 8px; overflow: hidden; pointer-events: none;
+    }
+    .fc-bar-actual-overlay .fc-seg { opacity: .92; }
+    .fc-legend-row {
+      display: flex; gap: 16px; margin-bottom: 12px; font-size: .72rem; color: var(--muted);
+    }
+    .fc-legend-row span { display: inline-flex; align-items: center; gap: 6px; }
+    .fc-legend-planned i {
+      width: 14px; height: 8px; border-radius: 2px;
+      background: rgba(251,191,36,.25); border: 1px dashed rgba(251,191,36,.5);
+    }
+    .fc-legend-actual i { width: 14px; height: 8px; border-radius: 2px; background: var(--green); }
+    .forecast-table .col-planned { color: var(--amber); }
+    .forecast-table .col-actual { color: var(--green); font-weight: 600; }
+    .forecast-table .col-pct.done { color: var(--green); font-weight: 700; }
+    .forecast-table .col-pct.good { color: #a3e635; font-weight: 700; }
+    .forecast-table .col-pct.mid { color: var(--amber); font-weight: 700; }
+    .forecast-table .col-pct.low { color: var(--red); font-weight: 700; }
+    .forecast-badge-2026 {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 100px; margin-bottom: 16px;
+      background: linear-gradient(135deg, rgba(251,191,36,.15), rgba(52,211,153,.12));
+      border: 1px solid rgba(251,191,36,.3);
+      font-size: .78rem; font-weight: 600; color: var(--amber);
+    }
 
     .wallet-box {
       padding: 16px; border-radius: var(--radius-sm);
@@ -798,7 +908,12 @@
 <script src="supabase-config.js"></script>
 <script type="module">
 import { initStore, loadChecks, saveChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail } from './store.js';
-import { INVEST_CATEGORIES, aggregateActualInvestments, calcYearBreakdown, calcCumulative, getForecastYears, countRecordedMonths, totalInvested } from './forecast.js';
+import {
+  INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
+  aggregateActualInvestments, aggregateProjectedInvestments,
+  calcYearBreakdown, calcCumulative, getForecastYears, countRecordedMonths,
+  totalInvested, achievementPct, achievementStatus, planMonthsInYear,
+} from './forecast.js';
 
 const fmt = n => n.toLocaleString('ko-KR') + '원';
 const fmtShort = n => {
@@ -897,6 +1012,7 @@ const SN_CHECK_ITEMS = [
 let budgetChecks = loadChecks();
 let trackerYear = TRACKER_YEARS[0];
 let trackerMonth = '7';
+let forecastYear = TRACKER_YEARS[0];
 let saveTimer = null;
 let storeMode = 'local';
 
@@ -1691,6 +1807,7 @@ function renderTracker() {
     const btn = e.target.closest('[data-year]');
     if (!btn) return;
     trackerYear = +btn.dataset.year;
+    forecastYear = trackerYear;
     renderTracker();
     attachTrackerEvents();
   };
@@ -1715,98 +1832,212 @@ function renderWilliam() {
 }
 
 function renderForecast() {
-  const byYear = aggregateActualInvestments(budgetChecks, getActual, {
-    yjItems: YJ_CHECK_ITEMS,
-    snItems: SN_CHECK_ITEMS,
-  });
-  const years = getForecastYears(byYear, TRACKER_YEARS);
-  const cum = calcCumulative(byYear, years);
-  const grandTotal = totalInvested(byYear);
-  const monthCount = countRecordedMonths(budgetChecks, getActual, {
-    yjItems: YJ_CHECK_ITEMS,
-    snItems: SN_CHECK_ITEMS,
-  });
-  const yearsWithData = years.filter((y) => calcYearBreakdown(byYear, y).total > 0);
-  const latestActiveYear = yearsWithData[yearsWithData.length - 1];
-  const latestAnnual = latestActiveYear ? calcYearBreakdown(byYear, latestActiveYear).total : 0;
-  const maxAnnual = Math.max(1, ...years.map((y) => calcYearBreakdown(byYear, y).total));
-  const avgMonthly = monthCount ? Math.round(grandTotal / monthCount) : 0;
+  const opts = { yjItems: YJ_CHECK_ITEMS, snItems: SN_CHECK_ITEMS };
+  const actualByYear = aggregateActualInvestments(budgetChecks, getActual, opts);
+  const years = getForecastYears(actualByYear, {}, TRACKER_YEARS);
+  const projectedByYear = aggregateProjectedInvestments(years, opts);
 
-  const hasData = grandTotal > 0;
+  const fy = forecastYear;
+  const planMonths = planMonthsInYear(fy);
+  const actualYear = calcYearBreakdown(actualByYear, fy);
+  const plannedYear = calcYearBreakdown(projectedByYear, fy);
+  const yearPct = achievementPct(actualYear.total, plannedYear.total);
+  const yearStatus = achievementStatus(yearPct);
+  const yearRemain = Math.max(0, plannedYear.total - actualYear.total);
 
-  const legend = INVEST_CATEGORIES.map(c =>
-    `<span><i style="background:${c.color}"></i>${c.name}</span>`
+  const cumActual = calcCumulative(actualByYear, years);
+  const cumPlanned = calcCumulative(projectedByYear, years);
+  const grandActual = totalInvested(actualByYear, years);
+  const grandPlanned = totalInvested(projectedByYear, years);
+  const grandPct = achievementPct(grandActual, grandPlanned);
+
+  const monthCount = countRecordedMonths(budgetChecks, getActual, opts);
+  const maxAnnual = Math.max(1, ...years.map((y) => calcYearBreakdown(projectedByYear, y).total));
+
+  const yearTabs = years.map((y) =>
+    `<button type="button" class="forecast-year-tab${y === fy ? ' active' : ''}" data-fy="${y}">${y}년</button>`
   ).join('');
 
-  const chartRows = hasData ? years.map(year => {
-    const { breakdown, total } = calcYearBreakdown(byYear, year);
-    const segs = INVEST_CATEGORIES.map(cat => {
-      const amt = breakdown[cat.id]?.amount || 0;
+  const catCards = INVEST_CATEGORIES.map((cat) => {
+    const planned = plannedYear.breakdown[cat.id]?.amount || 0;
+    const actual = actualYear.breakdown[cat.id]?.amount || 0;
+    if (!planned && !actual) return '';
+    const pct = achievementPct(actual, planned);
+    const st = achievementStatus(pct);
+    const remain = Math.max(0, planned - actual);
+    const planW = planned ? Math.min(100, planned / maxAnnual * 100) : 0;
+    const actW = planned ? Math.min(planW, (actual / planned) * planW) : 0;
+    const limitBadge = cat.limitNote
+      ? `<span class="fc-cat-limit">${cat.limitNote}</span>` : '';
+    return `<div class="fc-cat-card">
+      <div class="fc-cat-head">
+        <div class="fc-cat-name"><span class="fc-cat-dot" style="background:${cat.color}"></span>${cat.name}</div>
+        ${limitBadge}
+      </div>
+      <div class="fc-cat-nums">
+        <span>예상 <strong>${planned ? fmt(planned) : '—'}</strong></span>
+        <span>실제 <strong>${actual ? fmt(actual) : '—'}</strong></span>
+      </div>
+      <div class="fc-dual-bar">
+        <div class="planned" style="width:${planW}%"></div>
+        <div class="actual" style="width:${actW}%;background:${cat.color}"></div>
+      </div>
+      <div class="fc-cat-foot">
+        <span class="fc-cat-pct ${st}">${planned ? pct + '%' : '—'}</span>
+        <span class="fc-cat-remain">${remain > 0 ? `${fmt(remain)} 남음` : actual >= planned && planned ? '✓ 달성' : ''}</span>
+      </div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  const chartRows = years.map((year) => {
+    const planned = calcYearBreakdown(projectedByYear, year);
+    const actual = calcYearBreakdown(actualByYear, year);
+    const planSegs = INVEST_CATEGORIES.map((cat) => {
+      const amt = planned.breakdown[cat.id]?.amount || 0;
       const w = maxAnnual ? (amt / maxAnnual * 100) : 0;
-      const title = `${cat.name} ${fmt(amt)}`;
-      return amt ? `<div class="fc-seg" style="width:${w}%;background:${cat.color}" title="${title}"></div>` : '';
+      return amt ? `<div class="fc-seg" style="width:${w}%;background:${cat.color};opacity:.35" title="예상 ${cat.name} ${fmt(amt)}"></div>` : '';
+    }).join('');
+    const actSegs = INVEST_CATEGORIES.map((cat) => {
+      const amt = actual.breakdown[cat.id]?.amount || 0;
+      const w = maxAnnual ? (amt / maxAnnual * 100) : 0;
+      return amt ? `<div class="fc-seg" style="width:${w}%;background:${cat.color}" title="실제 ${cat.name} ${fmt(amt)}"></div>` : '';
     }).join('');
     return `<div class="fc-year-row">
       <div class="fc-year-label">${year}</div>
-      <div class="fc-bar-track">${segs || '<span style="font-size:.72rem;color:var(--muted);padding:8px">입력 없음</span>'}</div>
-      <div class="fc-year-total">${total ? fmt(total) : '—'}</div>
+      <div class="fc-bar-wrap">
+        <div class="fc-bar-planned">${planSegs}</div>
+        <div class="fc-bar-actual-overlay">${actSegs}</div>
+      </div>
+      <div class="fc-year-plan">${planned.total ? fmt(planned.total) : '—'}</div>
+      <div class="fc-year-total">${actual.total ? fmt(actual.total) : '—'}</div>
     </div>`;
-  }).join('') : `<div class="config-hint" style="margin:0">체크리스트 투자 항목에 <strong>실제 금액</strong>을 입력하면 여기에 반영됩니다.</div>`;
+  }).join('');
 
-  const tableHead = `<tr><th>항목</th>${years.map(y => `<th>${y}년</th>`).join('')}<th>합계</th></tr>`;
-  const catRows = INVEST_CATEGORIES.map(cat => {
-    let rowSum = 0;
-    const cells = years.map(y => {
-      const amt = calcYearBreakdown(byYear, y).breakdown[cat.id]?.amount || 0;
-      rowSum += amt;
-      return `<td>${amt ? fmt(amt) : '—'}</td>`;
+  const tableRows = INVEST_CATEGORIES.map((cat) => {
+    let sumPlan = 0, sumAct = 0;
+    const cells = years.map((y) => {
+      const p = calcYearBreakdown(projectedByYear, y).breakdown[cat.id]?.amount || 0;
+      const a = calcYearBreakdown(actualByYear, y).breakdown[cat.id]?.amount || 0;
+      sumPlan += p;
+      sumAct += a;
+      const pct = achievementPct(a, p);
+      const st = achievementStatus(pct);
+      return `<td class="col-planned">${p ? fmt(p) : '—'}</td><td class="col-actual">${a ? fmt(a) : '—'}</td><td class="col-pct ${st}">${p ? pct + '%' : '—'}</td>`;
     }).join('');
-    return `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cat.color};margin-right:6px"></span>${cat.name}</td>${cells}<td>${rowSum ? fmt(rowSum) : '—'}</td></tr>`;
+    const totalPct = achievementPct(sumAct, sumPlan);
+    const totalSt = achievementStatus(totalPct);
+    const limit = cat.limitNote ? ` <span class="fc-cat-limit" style="font-size:.6rem">${cat.limitNote}</span>` : '';
+    return `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cat.color};margin-right:6px"></span>${cat.name}${limit}</td>
+      ${cells}
+      <td class="col-planned">${sumPlan ? fmt(sumPlan) : '—'}</td>
+      <td class="col-actual">${sumAct ? fmt(sumAct) : '—'}</td>
+      <td class="col-pct ${totalSt}">${sumPlan ? totalPct + '%' : '—'}</td>
+    </tr>`;
   }).join('');
 
-  const annualCells = years.map(y => {
-    const t = calcYearBreakdown(byYear, y).total;
-    return `<td>${t ? fmt(t) : '—'}</td>`;
-  }).join('');
-  const cumCells = years.map(y => `<td>${cum[y]?.cumulative ? fmt(cum[y].cumulative) : '—'}</td>`).join('');
+  const yearColHead = years.map((y) =>
+    `<th colspan="3">${y}년</th>`
+  ).join('');
+  const subColHead = years.map(() =>
+    `<th>예상</th><th>실제</th><th>달성</th>`
+  ).join('');
+
+  const badge2026 = fy === 2026
+    ? `<div class="forecast-badge-2026">🎯 ${fy}년 — ${planMonths}개월 계획 · IRP·연금저축 한도 최대 납입 목표</div>` : '';
 
   document.getElementById('forecast-section').innerHTML = `
     <div class="forecast-header">
       <div>
         <h3>📈 투자 전망</h3>
-        <p>체크리스트에 입력한 <strong>실제 투자 금액</strong> 기준 · ISA · IRP · 연금저축 · 국장 · 미장 · 코인+금</p>
+        <p>월 계획 <strong>예상</strong> vs 체크리스트 <strong>실제</strong> · ${PLAN_START.year}년 ${PLAN_START.month}월부터 관리 시작</p>
       </div>
     </div>
+    <div class="forecast-year-tabs" id="forecast-year-tabs">${yearTabs}</div>
+    ${badge2026}
     <div class="forecast-hero">
       <div class="forecast-hero-card highlight">
-        <div class="fh-label">총 누적 (실제)</div>
-        <div class="fh-value">${hasData ? fmt(grandTotal) : '—'}</div>
+        <div class="fh-label">${fy}년 달성률</div>
+        <div class="fh-value pct-${yearStatus}">${plannedYear.total ? yearPct + '%' : '—'}</div>
+        <div class="fh-sub">${yearRemain > 0 ? `${fmt(yearRemain)} 더 필요` : plannedYear.total ? '목표 달성!' : ''}</div>
       </div>
       <div class="forecast-hero-card">
-        <div class="fh-label">${latestActiveYear ? `${latestActiveYear}년` : '최근'} 실적</div>
-        <div class="fh-value">${latestAnnual ? fmt(latestAnnual) : '—'}</div>
+        <div class="fh-label">${fy}년 예상</div>
+        <div class="fh-value planned">${plannedYear.total ? fmt(plannedYear.total) : '—'}</div>
+        <div class="fh-sub">월 계획 × ${planMonths}개월 · 한도 반영</div>
       </div>
       <div class="forecast-hero-card">
-        <div class="fh-label">월 평균 (${monthCount}개월 기록)</div>
-        <div class="fh-value">${avgMonthly ? fmt(avgMonthly) : '—'}</div>
+        <div class="fh-label">${fy}년 실제</div>
+        <div class="fh-value actual">${actualYear.total ? fmt(actualYear.total) : '—'}</div>
+        <div class="fh-sub">${monthCount}개월 기록</div>
+      </div>
+      <div class="forecast-hero-card">
+        <div class="fh-label">전체 누적 달성</div>
+        <div class="fh-value pct-${achievementStatus(grandPct)}">${grandPlanned ? grandPct + '%' : '—'}</div>
+        <div class="fh-sub">실제 ${fmt(grandActual)} / 예상 ${fmt(grandPlanned)}</div>
       </div>
     </div>
-    <div class="forecast-legend">${legend}</div>
+    <div class="fc-compare-section">
+      <h4>${fy}년 항목별 달성</h4>
+      <div class="fc-cat-grid">${catCards || '<div class="config-hint" style="margin:0">예상 데이터 없음</div>'}</div>
+    </div>
+    <div class="fc-legend-row">
+      <span class="fc-legend-planned"><i></i> 예상 (월 계획)</span>
+      <span class="fc-legend-actual"><i></i> 실제 (체크리스트)</span>
+    </div>
+    <div class="forecast-legend">${INVEST_CATEGORIES.map(c =>
+      `<span><i style="background:${c.color}"></i>${c.name}</span>`
+    ).join('')}</div>
     <div class="fc-chart">${chartRows}</div>
-    ${hasData ? `<div class="forecast-table-wrap">
+    <div class="forecast-table-wrap">
       <table class="forecast-table">
-        <thead>${tableHead}</thead>
+        <thead>
+          <tr><th rowspan="2">항목</th>${yearColHead}<th colspan="3">합계</th></tr>
+          <tr>${subColHead}<th>예상</th><th>실제</th><th>달성</th></tr>
+        </thead>
         <tbody>
-          ${catRows}
-          <tr class="total-row"><td>연간 합계</td>${annualCells}<td>${fmt(grandTotal)}</td></tr>
-          <tr class="cum-row"><td>누적 합계</td>${cumCells}<td>${fmt(grandTotal)}</td></tr>
+          ${tableRows}
+          <tr class="total-row">
+            <td>연간 합계</td>
+            ${years.map((y) => {
+              const p = calcYearBreakdown(projectedByYear, y).total;
+              const a = calcYearBreakdown(actualByYear, y).total;
+              const pct = achievementPct(a, p);
+              const st = achievementStatus(pct);
+              return `<td class="col-planned">${p ? fmt(p) : '—'}</td><td class="col-actual">${a ? fmt(a) : '—'}</td><td class="col-pct ${st}">${p ? pct + '%' : '—'}</td>`;
+            }).join('')}
+            <td class="col-planned">${fmt(grandPlanned)}</td>
+            <td class="col-actual">${fmt(grandActual)}</td>
+            <td class="col-pct ${achievementStatus(grandPct)}">${grandPlanned ? grandPct + '%' : '—'}</td>
+          </tr>
+          <tr class="cum-row">
+            <td>누적 합계</td>
+            ${years.map((y) => {
+              const p = cumPlanned[y]?.cumulative || 0;
+              const a = cumActual[y]?.cumulative || 0;
+              const pct = achievementPct(a, p);
+              const st = achievementStatus(pct);
+              return `<td class="col-planned">${p ? fmt(p) : '—'}</td><td class="col-actual">${a ? fmt(a) : '—'}</td><td class="col-pct ${st}">${p ? pct + '%' : '—'}</td>`;
+            }).join('')}
+            <td class="col-planned">${fmt(grandPlanned)}</td>
+            <td class="col-actual">${fmt(grandActual)}</td>
+            <td class="col-pct ${achievementStatus(grandPct)}">${grandPlanned ? grandPct + '%' : '—'}</td>
+          </tr>
         </tbody>
       </table>
-    </div>` : ''}
+    </div>
     <p class="forecast-note">
-      · 체크리스트 투자 항목의 「실제 금액」만 합산합니다 (계획 금액·미입력 월 제외)<br>
-      · 상세 입력(종목·분류) 합계가 실제 금액에 반영되면 자동 집계 · 수익률 미반영
+      · <strong>예상</strong>: 체크리스트 월 계획 금액 기준 (${PLAN_START.year}년은 ${planMonthsInYear(PLAN_START.year)}개월)<br>
+      · IRP 연 한도 인당 ${(ANNUAL_LIMIT_PER_PERSON.irp / 10000).toFixed(0)}만 · 연금저축 연 한도 인당 ${(ANNUAL_LIMIT_PER_PERSON.pension / 10000).toFixed(0)}만 반영<br>
+      · <strong>실제</strong>: 체크리스트에 입력한 금액만 합산 · 수익률 미반영
     </p>`;
+
+  document.getElementById('forecast-year-tabs').onclick = (e) => {
+    const btn = e.target.closest('[data-fy]');
+    if (!btn) return;
+    forecastYear = +btn.dataset.fy;
+    renderForecast();
+  };
 }
 
 // 메인 탭 (계획 / 체크리스트)
