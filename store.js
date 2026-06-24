@@ -142,3 +142,21 @@ export function setCheck(checks, year, month, person, itemId, value) {
   next[year][month][checkKey(person, itemId)] = value;
   return next;
 }
+
+export function detailKey(person, itemId) {
+  return `${person}_${itemId}_detail`;
+}
+
+export function getDetail(checks, year, month, person, itemId) {
+  const key = detailKey(person, itemId);
+  const m = checks?.[year]?.[month]?.[key];
+  return m && typeof m === "object" ? m : null;
+}
+
+export function setDetail(checks, year, month, person, itemId, detail) {
+  const next = structuredClone(checks);
+  if (!next[year]) next[year] = {};
+  if (!next[year][month]) next[year][month] = {};
+  next[year][month][detailKey(person, itemId)] = detail;
+  return next;
+}

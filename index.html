@@ -339,6 +339,125 @@
     .check-item .ci-actual::placeholder { color: var(--muted); font-size: .72rem; }
     .check-item.done .ci-plan { color: var(--green); }
 
+    .check-item-wrap { margin-bottom: 6px; }
+    .item-details {
+      margin: 0 0 8px 28px;
+      padding: 0 12px 12px;
+      background: rgba(0,0,0,.15);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: .8rem;
+    }
+    .item-details summary {
+      padding: 10px 4px; cursor: pointer; font-weight: 600;
+      color: var(--muted); list-style: none; user-select: none;
+    }
+    .item-details summary::-webkit-details-marker { display: none; }
+    .item-details summary::before { content: '▸ '; }
+    .item-details[open] summary::before { content: '▾ '; }
+    .item-details[open] summary { color: var(--text); }
+    .detail-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    .detail-table th {
+      text-align: left; font-size: .65rem; color: var(--muted);
+      font-weight: 600; padding: 4px 6px 6px 0;
+    }
+    .detail-table td { padding: 4px 6px 4px 0; vertical-align: middle; }
+    .detail-table input, .detail-table select {
+      width: 100%; padding: 7px 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      font-family: inherit; font-size: .78rem;
+    }
+    .detail-table input:focus, .detail-table select:focus {
+      outline: none; border-color: var(--yj);
+    }
+    .tracker-col.sn .detail-table input:focus,
+    .tracker-col.sn .detail-table select:focus { border-color: var(--sn); }
+    .detail-table .dl-remove {
+      width: 28px; height: 28px; padding: 0; border: none;
+      background: var(--red-dim); color: var(--red);
+      border-radius: 6px; cursor: pointer; font-size: 1rem; line-height: 1;
+    }
+    .detail-foot {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
+    }
+    .detail-add {
+      padding: 6px 12px; border: 1px dashed var(--border);
+      background: transparent; color: var(--muted);
+      border-radius: 8px; font-family: inherit; font-size: .75rem;
+      font-weight: 600; cursor: pointer;
+    }
+    .detail-add:hover { border-color: var(--green); color: var(--green); }
+    .detail-total { font-size: .78rem; font-weight: 700; color: var(--green); }
+    .detail-total span { color: var(--muted); font-weight: 500; margin-right: 6px; }
+
+    /* 투자 전망 */
+    .forecast-page { animation: fadeIn .35s ease; }
+    .forecast-header {
+      display: flex; flex-wrap: wrap; justify-content: space-between;
+      align-items: flex-start; gap: 16px; margin-bottom: 24px;
+    }
+    .forecast-header h3 { font-size: 1.15rem; font-weight: 800; }
+    .forecast-header p { font-size: .82rem; color: var(--muted); margin-top: 4px; }
+    .forecast-hero {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px;
+    }
+    @media (max-width: 700px) { .forecast-hero { grid-template-columns: 1fr; } }
+    .forecast-hero-card {
+      padding: 20px; border-radius: var(--radius-sm);
+      background: var(--surface2); border: 1px solid var(--border); text-align: center;
+    }
+    .forecast-hero-card.highlight {
+      background: linear-gradient(135deg, rgba(91,141,239,.12), rgba(176,124,247,.12));
+      border-color: rgba(255,255,255,.1);
+    }
+    .forecast-hero-card .fh-label { font-size: .72rem; color: var(--muted); margin-bottom: 6px; }
+    .forecast-hero-card .fh-value { font-size: 1.35rem; font-weight: 800; }
+    .forecast-legend {
+      display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 20px;
+    }
+    .forecast-legend span {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: .75rem; color: var(--muted);
+    }
+    .forecast-legend i {
+      width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+    }
+    .fc-year-row {
+      display: grid; grid-template-columns: 52px 1fr 110px;
+      align-items: center; gap: 12px; margin-bottom: 10px;
+    }
+    @media (max-width: 500px) {
+      .fc-year-row { grid-template-columns: 44px 1fr; }
+      .fc-year-total { grid-column: 2; text-align: left; font-size: .85rem; }
+    }
+    .fc-year-label { font-size: .85rem; font-weight: 700; }
+    .fc-bar-track {
+      height: 36px; background: var(--surface2); border-radius: 8px;
+      overflow: hidden; display: flex; min-width: 0;
+    }
+    .fc-seg { height: 100%; min-width: 2px; transition: width .4s ease; }
+    .fc-year-total { font-size: .9rem; font-weight: 800; text-align: right; white-space: nowrap; }
+    .forecast-table-wrap {
+      margin-top: 28px; overflow-x: auto;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px;
+    }
+    .forecast-table {
+      width: 100%; border-collapse: collapse; font-size: .82rem;
+    }
+    .forecast-table th, .forecast-table td {
+      padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--border);
+    }
+    .forecast-table th:first-child, .forecast-table td:first-child { text-align: left; }
+    .forecast-table th { font-size: .72rem; color: var(--muted); font-weight: 600; }
+    .forecast-table tr.total-row td { font-weight: 800; border-top: 2px solid var(--border); }
+    .forecast-table tr.cum-row td { color: var(--green); font-weight: 700; }
+    .forecast-note {
+      margin-top: 16px; font-size: .75rem; color: var(--muted); line-height: 1.7;
+    }
+
     .wallet-box {
       padding: 16px; border-radius: var(--radius-sm);
       background: var(--surface2); margin-bottom: 14px;
@@ -647,6 +766,7 @@
   <nav class="main-nav" id="main-nav">
     <button class="main-nav-btn active" data-page="plan">📊 월정산 계획</button>
     <button class="main-nav-btn" data-page="checklist">✅ 체크리스트</button>
+    <button class="main-nav-btn" data-page="forecast">📈 투자 전망</button>
   </nav>
 
   <!-- ═══ 계획 페이지 ═══ -->
@@ -668,11 +788,17 @@
   <div class="main-page" id="page-checklist">
     <div class="tracker-page" id="tracker-section"></div>
   </div>
+
+  <!-- ═══ 투자 전망 페이지 ═══ -->
+  <div class="main-page" id="page-forecast">
+    <div class="forecast-page" id="forecast-section"></div>
+  </div>
 </div>
 
 <script src="supabase-config.js"></script>
 <script type="module">
-import { initStore, loadChecks, saveChecks, getCheck, setCheck, getActual, setActual } from './store.js';
+import { initStore, loadChecks, saveChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail } from './store.js';
+import { FORECAST_YEARS, INVEST_CATEGORIES, calcYearBreakdown, calcCumulative } from './forecast.js';
 
 const fmt = n => n.toLocaleString('ko-KR') + '원';
 const fmtShort = n => {
@@ -739,33 +865,33 @@ const MONTH_LABELS = ['1월','2월','3월','4월','5월','6월','7월','8월','9
 
 /* 체크리스트 항목 */
 const YJ_CHECK_ITEMS = [
-  { id: 'isa', name: 'ISA 목돈', note: '7월 일시불 2천만', amt: 20000000, auto: true, julyOnly: true, fromSavings: true },
-  { id: 'irp', name: 'IRP', note: 'ETF 장투', amt: 500000, auto: true },
-  { id: 'pension', name: '연금저축펀드', note: '고영 ETF', amt: 1000000, auto: true },
+  { id: 'isa', name: 'ISA 목돈', note: '7월 일시불 2천만', amt: 20000000, auto: true, julyOnly: true, fromSavings: true, detailType: 'invest' },
+  { id: 'irp', name: 'IRP', note: 'ETF 장투', amt: 500000, auto: true, detailType: 'invest' },
+  { id: 'pension', name: '연금저축펀드', note: '고영 ETF', amt: 1000000, auto: true, detailType: 'invest' },
   { id: 'youth', name: '청년미래적금', note: '', amt: 500000, auto: true },
-  { id: 'kr', name: '국장 투자', note: '', amt: 500000, auto: true },
+  { id: 'kr', name: '국장 투자', note: '', amt: 500000, auto: true, detailType: 'invest' },
   { id: 'housing', name: '주택청약', note: '', amt: 250000, auto: true },
-  { id: 'rent', name: '주거비', note: '', amt: 750000, auto: true },
-  { id: 'loan', name: '월세 대출이자', note: '', amt: 130000, auto: true },
-  { id: 'pocket', name: '용돈', note: '직접 관리', amt: 700000, auto: false },
-  { id: 'electric', name: '전기세', note: '예상', amt: 40000, auto: true },
-  { id: 'gas', name: '가스료', note: '예상', amt: 30000, auto: true },
-  { id: 'water', name: '수도요금', note: '예상', amt: 20000, auto: true },
-  { id: 'internet', name: '인터넷', note: '예상', amt: 35000, auto: true },
-  { id: 'william', name: '윌리엄 할부', note: '780만 12개월', amt: 650000, auto: true },
+  { id: 'rent', name: '주거비', note: '', amt: 750000, auto: true, detailType: 'living', livingFixedCat: '주거비' },
+  { id: 'loan', name: '월세 대출이자', note: '', amt: 130000, auto: true, detailType: 'living', livingFixedCat: '월세 대출이자' },
+  { id: 'pocket', name: '용돈', note: '직접 관리', amt: 700000, auto: false, detailType: 'living' },
+  { id: 'electric', name: '전기세', note: '예상', amt: 40000, auto: true, detailType: 'living', livingFixedCat: '전기세' },
+  { id: 'gas', name: '가스료', note: '예상', amt: 30000, auto: true, detailType: 'living', livingFixedCat: '가스료' },
+  { id: 'water', name: '수도요금', note: '예상', amt: 20000, auto: true, detailType: 'living', livingFixedCat: '수도요금' },
+  { id: 'internet', name: '인터넷', note: '예상', amt: 35000, auto: true, detailType: 'living', livingFixedCat: '인터넷' },
+  { id: 'william', name: '윌리엄 할부', note: '780만 12개월', amt: 650000, auto: true, detailType: 'living', livingFixedCat: '윌리엄 할부' },
 ];
 
 const SN_CHECK_ITEMS = [
-  { id: 'isa', name: 'ISA', note: '자동이체', amt: 500000, auto: true },
-  { id: 'irp', name: 'IRP', note: '자동이체', amt: 500000, auto: true },
-  { id: 'pension', name: '연금저축펀드', note: '자동이체', amt: 1000000, auto: true },
+  { id: 'isa', name: 'ISA', note: '자동이체', amt: 500000, auto: true, detailType: 'invest' },
+  { id: 'irp', name: 'IRP', note: '자동이체', amt: 500000, auto: true, detailType: 'invest' },
+  { id: 'pension', name: '연금저축펀드', note: '자동이체', amt: 1000000, auto: true, detailType: 'invest' },
   { id: 'housing', name: '주택청약', note: '자동이체', amt: 250000, auto: true },
   { id: 'youth', name: '청년도약적금', note: '자동이체', amt: 700000, auto: true },
-  { id: 'kr', name: '국장 투자', note: '자동이체', amt: 300000, auto: true },
-  { id: 'us', name: '미국장 투자', note: '자동이체', amt: 300000, auto: true },
-  { id: 'crypto', name: '코인 + 금', note: '자동이체', amt: 200000, auto: true },
-  { id: 'pocket', name: '용돈', note: '직접 관리', amt: 700000, auto: false },
-  { id: 'travel', name: '여행비', note: '국내2 · 해외1', amt: 200000, auto: false },
+  { id: 'kr', name: '국장 투자', note: '자동이체', amt: 300000, auto: true, detailType: 'invest' },
+  { id: 'us', name: '미국장 투자', note: '자동이체', amt: 300000, auto: true, detailType: 'invest' },
+  { id: 'crypto', name: '코인 + 금', note: '자동이체', amt: 200000, auto: true, detailType: 'invest' },
+  { id: 'pocket', name: '용돈', note: '직접 관리', amt: 700000, auto: false, detailType: 'living' },
+  { id: 'travel', name: '여행비', note: '국내2 · 해외1', amt: 200000, auto: false, detailType: 'living' },
 ];
 
 let budgetChecks = loadChecks();
@@ -1246,16 +1372,160 @@ function updateWalletSummaries() {
   if (cnt) cnt.textContent = `${done}/${all}`;
 }
 
+const LIVING_DETAIL_EXTRA = ['여행', '주거비', '월세 대출이자', '전기세', '가스료', '수도요금', '인터넷', '윌리엄 할부', '기타'];
+
+function livingCategoryOptions(fixedCat) {
+  if (fixedCat) return [fixedCat];
+  const names = LIVING_CATS.map(c => c.name);
+  return [...new Set([...names, ...LIVING_DETAIL_EXTRA])];
+}
+
+function defaultDetail(it) {
+  if (it.detailType === 'invest') {
+    return { type: 'invest', lines: [{ symbol: '', shares: '', amount: '' }] };
+  }
+  if (it.detailType === 'living') {
+    const cat = it.livingFixedCat || LIVING_CATS[0]?.name || '기타';
+    return { type: 'living', lines: [{ category: cat, amount: '' }] };
+  }
+  return null;
+}
+
+function ensureDetail(person, it) {
+  let d = getDetail(budgetChecks, trackerYear, trackerMonth, person, it.id);
+  if (!d || !Array.isArray(d.lines) || !d.lines.length) d = defaultDetail(it);
+  return d;
+}
+
+function sumDetailAmount(detail) {
+  if (!detail?.lines) return 0;
+  return detail.lines.reduce((s, ln) => s + (Number(String(ln.amount).replace(/,/g, '')) || 0), 0);
+}
+
+function escAttr(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function formatDetailAmt(v) {
+  if (v === '' || v == null) return '';
+  const n = Number(String(v).replace(/,/g, ''));
+  return n ? n.toLocaleString('ko-KR') : '';
+}
+
+function renderInvestLines(lines) {
+  return lines.map((ln, i) => `
+    <tr class="detail-line" data-idx="${i}">
+      <td><input class="dl-symbol" placeholder="종목명" value="${escAttr(ln.symbol)}"></td>
+      <td style="width:56px"><input class="dl-shares" placeholder="주" inputmode="numeric" value="${escAttr(ln.shares)}"></td>
+      <td><input class="dl-amount" placeholder="금액" inputmode="numeric" value="${formatDetailAmt(ln.amount)}"></td>
+      <td style="width:32px"><button type="button" class="dl-remove" title="삭제">×</button></td>
+    </tr>`).join('');
+}
+
+function renderLivingLines(lines, fixedCat) {
+  const opts = livingCategoryOptions(fixedCat);
+  return lines.map((ln, i) => {
+    const cat = ln.category || opts[0];
+    const catCell = fixedCat
+      ? `<span style="color:var(--muted);font-size:.78rem">${escAttr(fixedCat)}</span><input type="hidden" class="dl-category" value="${escAttr(fixedCat)}">`
+      : `<select class="dl-category">${opts.map(o => `<option value="${escAttr(o)}"${o === cat ? ' selected' : ''}>${escAttr(o)}</option>`).join('')}</select>`;
+    return `<tr class="detail-line" data-idx="${i}">
+      <td colspan="2">${catCell}</td>
+      <td><input class="dl-amount" placeholder="금액" inputmode="numeric" value="${formatDetailAmt(ln.amount)}"></td>
+      <td style="width:32px"><button type="button" class="dl-remove" title="삭제">×</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDetailPanel(person, it) {
+  if (!it.detailType) return '';
+  const detail = ensureDetail(person, it);
+  const total = sumDetailAmount(detail);
+  const summaryLabel = it.detailType === 'invest' ? '📋 매수 상세 (종목·주·금액)' : '📋 지출 상세 (분류별)';
+
+  if (it.detailType === 'invest') {
+    return `<details class="item-details" data-person="${person}" data-id="${it.id}" data-type="invest">
+      <summary>${summaryLabel}</summary>
+      <table class="detail-table">
+        <thead><tr><th>종목</th><th>주</th><th>금액</th><th></th></tr></thead>
+        <tbody class="detail-body">${renderInvestLines(detail.lines)}</tbody>
+      </table>
+      <div class="detail-foot">
+        <button type="button" class="detail-add" data-person="${person}" data-id="${it.id}">+ 종목 추가</button>
+        <div class="detail-total"><span>합계</span><span class="dt-val">${fmt(total)}</span></div>
+      </div>
+    </details>`;
+  }
+
+  return `<details class="item-details" data-person="${person}" data-id="${it.id}" data-type="living">
+    <summary>${summaryLabel}</summary>
+    <table class="detail-table">
+      <thead><tr><th colspan="2">분류</th><th>금액</th><th></th></tr></thead>
+      <tbody class="detail-body">${renderLivingLines(detail.lines, it.livingFixedCat)}</tbody>
+    </table>
+    <div class="detail-foot">
+      <button type="button" class="detail-add" data-person="${person}" data-id="${it.id}"${it.livingFixedCat ? ' style="display:none"' : ''}>+ 항목 추가</button>
+      <div class="detail-total"><span>합계</span><span class="dt-val">${fmt(total)}</span></div>
+    </div>
+  </details>`;
+}
+
+function getCheckItemDef(person, id) {
+  const items = person === 'yj' ? YJ_CHECK_ITEMS : SN_CHECK_ITEMS;
+  return items.find(x => x.id === id);
+}
+
+function readDetailFromWrap(detailsEl) {
+  const type = detailsEl.dataset.type;
+  const it = getCheckItemDef(detailsEl.dataset.person, detailsEl.dataset.id);
+  const lines = [...detailsEl.querySelectorAll('.detail-line')].map(row => {
+    if (type === 'invest') {
+      return {
+        symbol: row.querySelector('.dl-symbol')?.value || '',
+        shares: row.querySelector('.dl-shares')?.value || '',
+        amount: parseActualInput(row.querySelector('.dl-amount')?.value || ''),
+      };
+    }
+    return {
+      category: row.querySelector('.dl-category')?.value || it?.livingFixedCat || '',
+      amount: parseActualInput(row.querySelector('.dl-amount')?.value || ''),
+    };
+  });
+  return { type, lines };
+}
+
+function syncDetailToStore(detailsEl) {
+  const person = detailsEl.dataset.person;
+  const id = detailsEl.dataset.id;
+  const detail = readDetailFromWrap(detailsEl);
+  budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
+  const total = sumDetailAmount(detail);
+  const dtVal = detailsEl.querySelector('.dt-val');
+  if (dtVal) dtVal.textContent = fmt(total);
+  const wrap = detailsEl.closest('.check-item-wrap');
+  const actualInp = wrap?.querySelector('.ci-actual');
+  if (actualInp) {
+    actualInp.value = total ? formatActualInput(total) : '';
+    budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, person, id, total || '');
+  }
+  updateWalletSummaries();
+  scheduleSave();
+}
+
 function renderCheckRow(person, it) {
   const checked = getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id);
   const actual = getActual(budgetChecks, trackerYear, trackerMonth, person, it.id);
-  return `<div class="check-item${checked ? ' done' : ''}" data-person="${person}" data-id="${it.id}">
-    <input type="checkbox" class="ci-check" data-person="${person}" data-id="${it.id}" ${checked ? 'checked' : ''}>
-    <div class="ci-name">${it.name}${itemSubLabel(it)}</div>
-    <div class="ci-plan"><span>계획</span>${fmtShort(it.amt)}</div>
-    <input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
-      placeholder="실제 금액" inputmode="numeric"
-      value="${formatActualInput(actual)}">
+  const detailPanel = renderDetailPanel(person, it);
+  return `<div class="check-item-wrap" data-person="${person}" data-id="${it.id}">
+    <div class="check-item${checked ? ' done' : ''}" data-person="${person}" data-id="${it.id}">
+      <input type="checkbox" class="ci-check" data-person="${person}" data-id="${it.id}" ${checked ? 'checked' : ''}>
+      <div class="ci-name">${it.name}${itemSubLabel(it)}</div>
+      <div class="ci-plan"><span>계획</span>${fmtShort(it.amt)}</div>
+      <input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
+        placeholder="실제 금액" inputmode="numeric"
+        value="${formatActualInput(actual)}">
+    </div>
+    ${detailPanel}
   </div>`;
 }
 
@@ -1288,30 +1558,81 @@ function renderCheckColumn(person, items, colorClass) {
 function attachTrackerEvents() {
   const section = document.getElementById('tracker-section');
 
+  section.onclick = e => {
+    const addBtn = e.target.closest('.detail-add');
+    if (addBtn) {
+      e.preventDefault();
+      const person = addBtn.dataset.person;
+      const id = addBtn.dataset.id;
+      const it = getCheckItemDef(person, id);
+      const detailsEl = addBtn.closest('.item-details');
+      const detail = readDetailFromWrap(detailsEl);
+      if (it.detailType === 'invest') {
+        detail.lines.push({ symbol: '', shares: '', amount: '' });
+        detailsEl.querySelector('.detail-body').insertAdjacentHTML('beforeend', renderInvestLines([detail.lines.at(-1)]));
+      } else {
+        detail.lines.push({ category: it.livingFixedCat || LIVING_CATS[0].name, amount: '' });
+        detailsEl.querySelector('.detail-body').insertAdjacentHTML('beforeend', renderLivingLines([detail.lines.at(-1)], it.livingFixedCat));
+      }
+      budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
+      scheduleSave();
+      return;
+    }
+    const rmBtn = e.target.closest('.dl-remove');
+    if (rmBtn) {
+      e.preventDefault();
+      const detailsEl = rmBtn.closest('.item-details');
+      const body = detailsEl.querySelector('.detail-body');
+      if (body.querySelectorAll('.detail-line').length <= 1) return;
+      rmBtn.closest('.detail-line').remove();
+      syncDetailToStore(detailsEl);
+    }
+  };
+
   section.onchange = e => {
     const cb = e.target.closest('.ci-check');
-    if (!cb) return;
-    budgetChecks = setCheck(budgetChecks, trackerYear, trackerMonth, cb.dataset.person, cb.dataset.id, cb.checked);
-    cb.closest('.check-item').classList.toggle('done', cb.checked);
-    updateWalletSummaries();
-    scheduleSave();
+    if (cb) {
+      budgetChecks = setCheck(budgetChecks, trackerYear, trackerMonth, cb.dataset.person, cb.dataset.id, cb.checked);
+      cb.closest('.check-item').classList.toggle('done', cb.checked);
+      updateWalletSummaries();
+      scheduleSave();
+      return;
+    }
+    const detailsEl = e.target.closest('.item-details');
+    if (detailsEl) syncDetailToStore(detailsEl);
   };
 
   section.oninput = e => {
     const inp = e.target.closest('.ci-actual');
-    if (!inp) return;
-    const val = parseActualInput(inp.value);
-    budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id, val);
-    updateWalletSummaries();
-    scheduleSave();
+    if (inp) {
+      const val = parseActualInput(inp.value);
+      budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id, val);
+      updateWalletSummaries();
+      scheduleSave();
+      return;
+    }
+    const detailsEl = e.target.closest('.item-details');
+    if (detailsEl) {
+      clearTimeout(detailsEl._detailTimer);
+      detailsEl._detailTimer = setTimeout(() => syncDetailToStore(detailsEl), 400);
+    }
   };
 
-  section.onblur = e => {
+  section.addEventListener('blur', e => {
     const inp = e.target.closest('.ci-actual');
-    if (!inp) return;
-    const actual = getActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id);
-    inp.value = formatActualInput(actual);
-  }, true;
+    if (inp) {
+      const actual = getActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id);
+      inp.value = formatActualInput(actual);
+      return;
+    }
+    const amt = e.target.closest('.dl-amount');
+    if (amt) {
+      const n = parseActualInput(amt.value);
+      amt.value = n ? formatActualInput(n) : '';
+      const detailsEl = amt.closest('.item-details');
+      if (detailsEl) syncDetailToStore(detailsEl);
+    }
+  }, true);
 }
 
 function renderTracker() {
@@ -1392,6 +1713,84 @@ function renderWilliam() {
     <div class="william-amt">월 ${fmt(650000)}</div>`;
 }
 
+function renderForecast() {
+  const cum = calcCumulative(FORECAST_YEARS[FORECAST_YEARS.length - 1]);
+  const y2026 = cum[2026]?.cumulative || 0;
+  const yLast = cum[FORECAST_YEARS[FORECAST_YEARS.length - 1]]?.cumulative || 0;
+  const maxAnnual = Math.max(...FORECAST_YEARS.map(y => calcYearBreakdown(y).total));
+
+  const legend = INVEST_CATEGORIES.map(c =>
+    `<span><i style="background:${c.color}"></i>${c.name}</span>`
+  ).join('');
+
+  const chartRows = FORECAST_YEARS.map(year => {
+    const { breakdown, total } = calcYearBreakdown(year);
+    const segs = INVEST_CATEGORIES.map(cat => {
+      const amt = breakdown[cat.id]?.amount || 0;
+      const w = maxAnnual ? (amt / maxAnnual * 100) : 0;
+      const title = `${cat.name} ${fmt(amt)}`;
+      return amt ? `<div class="fc-seg" style="width:${w}%;background:${cat.color}" title="${title}"></div>` : '';
+    }).join('');
+    return `<div class="fc-year-row">
+      <div class="fc-year-label">${year}</div>
+      <div class="fc-bar-track">${segs}</div>
+      <div class="fc-year-total">${fmt(total)}</div>
+    </div>`;
+  }).join('');
+
+  const tableHead = `<tr><th>항목</th>${FORECAST_YEARS.map(y => `<th>${y}년</th>`).join('')}<th>5년 합계</th></tr>`;
+  const catRows = INVEST_CATEGORIES.map(cat => {
+    let rowSum = 0;
+    const cells = FORECAST_YEARS.map(y => {
+      const amt = calcYearBreakdown(y).breakdown[cat.id]?.amount || 0;
+      rowSum += amt;
+      return `<td>${amt ? fmt(amt) : '—'}</td>`;
+    }).join('');
+    return `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cat.color};margin-right:6px"></span>${cat.name}</td>${cells}<td>${fmt(rowSum)}</td></tr>`;
+  }).join('');
+
+  const annualCells = FORECAST_YEARS.map(y => `<td>${fmt(calcYearBreakdown(y).total)}</td>`).join('');
+  const cumCells = FORECAST_YEARS.map(y => `<td>${fmt(cum[y]?.cumulative || 0)}</td>`).join('');
+
+  document.getElementById('forecast-section').innerHTML = `
+    <div class="forecast-header">
+      <div>
+        <h3>📈 투자 전망</h3>
+        <p>ISA · IRP · 연금저축 · 국장 · 미장 · 코인+금 — 월 자동이체 계획 기준 (청약·적금 제외)</p>
+      </div>
+    </div>
+    <div class="forecast-hero">
+      <div class="forecast-hero-card highlight">
+        <div class="fh-label">2026년 누적</div>
+        <div class="fh-value">${fmt(y2026)}</div>
+      </div>
+      <div class="forecast-hero-card">
+        <div class="fh-label">${FORECAST_YEARS[FORECAST_YEARS.length - 1]}년 누적</div>
+        <div class="fh-value">${fmt(yLast)}</div>
+      </div>
+      <div class="forecast-hero-card">
+        <div class="fh-label">월 투자 합계 (2인)</div>
+        <div class="fh-value">${fmt(calcYearBreakdown(2027).total / 12)}</div>
+      </div>
+    </div>
+    <div class="forecast-legend">${legend}</div>
+    <div class="fc-chart">${chartRows}</div>
+    <div class="forecast-table-wrap">
+      <table class="forecast-table">
+        <thead>${tableHead}</thead>
+        <tbody>
+          ${catRows}
+          <tr class="total-row"><td>연간 적립 합계</td>${annualCells}<td>${fmt(yLast)}</td></tr>
+          <tr class="cum-row"><td>누적 합계</td>${cumCells}<td>${fmt(yLast)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="forecast-note">
+      · 2026년 ISA에 영재 목돈 2,000만원(7월 일시) 포함 · 이후 연도는 월 납입만 반영<br>
+      · 수익률·환율 미반영 순 납입액 기준 · 실제 체크리스트 실적과 별도
+    </p>`;
+}
+
 // 메인 탭 (계획 / 체크리스트)
 document.getElementById('main-nav').addEventListener('click', e => {
   const btn = e.target.closest('.main-nav-btn');
@@ -1413,6 +1812,7 @@ renderDashboard(yjExp, snExp);
 renderISA();
 renderWilliam();
 renderLivingBudget();
+renderForecast();
 
 const store = await initStore((remote) => {
   budgetChecks = remote;
