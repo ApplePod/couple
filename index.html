@@ -1351,19 +1351,19 @@ function renderForecastMascot(pct, actual, planned) {
   lastMascotStageId = stage.id;
   const st = achievementStatus(pct);
   return `<div class="forecast-mascot-slot">
+    <div class="forecast-hero-card highlight">
+      <div class="fh-label">전체 누적 달성</div>
+      <div class="fh-value pct-${st}">${planned ? pct + '%' : '—'}</div>
+      <div class="fh-sub">실제 ${fmt(actual)} / 예상 ${fmt(planned)}</div>
+    </div>
     <div class="fm-overlay" data-stage="${stage.id}" style="--fm-scale:${scale}">
       <div class="fm-speech">
         <button type="button" class="fm-quote-refresh" title="다른 멘트 보기" aria-label="다른 멘트">↻</button>
         <p class="fm-quote">${escHtml(quote)}</p>
       </div>
       <div class="fm-panda-box${grew ? ' fm-grow' : ''}">
-        <img class="fm-panda-img" src="${stage.img}" alt="노랑 판다 ${stage.label}" width="120" height="120" loading="lazy">
+        <img class="fm-panda-img" src="${stage.img}" alt="노랑 판다 ${stage.label}" width="96" height="96" loading="lazy">
       </div>
-    </div>
-    <div class="forecast-hero-card highlight">
-      <div class="fh-label">전체 누적 달성</div>
-      <div class="fh-value pct-${st}">${planned ? pct + '%' : '—'}</div>
-      <div class="fh-sub">실제 ${fmt(actual)} / 예상 ${fmt(planned)}</div>
     </div>
   </div>`;
 }

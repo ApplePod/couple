@@ -683,69 +683,61 @@
     .forecast-hero-card .fh-value.pct-mid { color: var(--amber); }
     .forecast-hero-card .fh-value.pct-low { color: var(--red); }
 
-    /* 누적 달성 판다 마스코트 — 카드 위에 겹쳐 떠 있음 */
+    /* 누적 달성 판다 — 카드 윗가장자리에 걸쳐 앉음 (알 위 하트처럼) */
     .forecast-mascot-slot {
       position: relative;
       overflow: visible;
-      padding-top: 78px;
     }
     .forecast-mascot-slot .forecast-hero-card {
       position: relative;
       z-index: 1;
-      margin-top: -32px;
+      padding-top: 22px;
       overflow: visible;
     }
     .fm-overlay {
       position: absolute;
-      z-index: 5;
-      top: 0;
+      z-index: 3;
       left: 50%;
+      bottom: calc(100% - 38px);
       transform: translateX(-50%);
       display: flex;
       flex-direction: column;
       align-items: center;
       width: max-content;
-      max-width: calc(100% + 20px);
+      max-width: calc(100% + 16px);
       pointer-events: none;
-      animation: fm-float-bob 3.2s ease-in-out infinite;
-    }
-    @keyframes fm-float-bob {
-      0%, 100% { transform: translateX(-50%) translateY(0); }
-      50% { transform: translateX(-50%) translateY(-6px); }
     }
     .fm-speech {
       position: relative;
-      width: 100%;
-      min-width: 148px;
-      max-width: 196px;
-      margin-bottom: 4px;
-      padding: 8px 26px 8px 12px;
+      width: max-content;
+      max-width: 132px;
+      margin-bottom: 2px;
+      padding: 5px 20px 5px 9px;
       background: #fff;
-      border: 2px solid rgba(249, 143, 117, 0.35);
-      border-radius: 14px;
-      box-shadow: 0 4px 14px rgba(249, 143, 117, 0.14);
+      border: 1.5px solid rgba(249, 143, 117, 0.4);
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(249, 143, 117, 0.12);
       pointer-events: auto;
     }
     .fm-speech::after {
       content: '';
       position: absolute;
-      bottom: -7px;
+      bottom: -5px;
       left: 50%;
       transform: translateX(-50%) rotate(45deg);
-      width: 12px;
-      height: 12px;
+      width: 8px;
+      height: 8px;
       background: #fff;
-      border-right: 2px solid rgba(249, 143, 117, 0.35);
-      border-bottom: 2px solid rgba(249, 143, 117, 0.35);
+      border-right: 1.5px solid rgba(249, 143, 117, 0.4);
+      border-bottom: 1.5px solid rgba(249, 143, 117, 0.4);
     }
     .fm-quote {
       margin: 0;
-      font-size: .76rem;
+      font-size: .64rem;
       font-weight: 600;
-      line-height: 1.45;
+      line-height: 1.35;
       color: var(--text);
       text-align: center;
-      min-height: 2.2em;
     }
     .fm-quote.fm-quote-pop {
       animation: fm-quote-pop 0.35s ease;
@@ -756,10 +748,10 @@
     }
     .fm-quote-refresh {
       position: absolute;
-      top: 6px;
-      right: 6px;
-      width: 22px;
-      height: 22px;
+      top: 3px;
+      right: 3px;
+      width: 18px;
+      height: 18px;
       padding: 0;
       border: none;
       border-radius: 100px;
@@ -775,14 +767,19 @@
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      height: 76px;
+      height: 58px;
       margin-bottom: 0;
       pointer-events: none;
+      animation: fm-float-bob 3s ease-in-out infinite;
+    }
+    @keyframes fm-float-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
     }
     .fm-panda-img {
       width: auto;
       height: 100%;
-      max-height: 76px;
+      max-height: 58px;
       object-fit: contain;
       transform: scale(var(--fm-scale, 1));
       transform-origin: center bottom;
