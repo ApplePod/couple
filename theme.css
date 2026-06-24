@@ -768,9 +768,12 @@
 
     .check-item.has-row-remove {
       position: relative;
+    }
+    .tracker-col.edit-mode .check-item.has-row-remove {
       padding-right: 34px;
     }
     .ci-row-remove {
+      display: none;
       position: absolute;
       top: 50%;
       right: 6px;
@@ -787,6 +790,15 @@
       border-radius: 6px;
       transition: color .15s, background .15s;
       z-index: 2;
+    }
+    .tracker-col.edit-mode .ci-row-remove {
+      display: block;
+    }
+    .tracker-edit-only {
+      display: none !important;
+    }
+    .tracker-col.edit-mode .tracker-edit-only {
+      display: block !important;
     }
     .ci-row-remove:hover { color: var(--red); background: rgba(220,38,38,.08); }
     .ci-plan-edit {
@@ -880,10 +892,10 @@
         width: 100%;
         align-self: end;
       }
-      .tracker-col .check-item.has-row-remove {
+      .tracker-col.edit-mode .check-item.has-row-remove {
         padding-right: 34px;
       }
-      .tracker-col .check-item .ci-row-remove {
+      .tracker-col.edit-mode .check-item .ci-row-remove {
         top: 10px;
         transform: none;
       }
@@ -902,8 +914,41 @@
     .tracker-col.yj { background: linear-gradient(180deg, var(--yj-glow) 0%, #fff 100%); border-top: 3px solid var(--yj); }
     .tracker-col.sn { background: linear-gradient(180deg, var(--sn-glow) 0%, #fff 100%); border-top: 3px solid var(--sn); }
     .tracker-col-head {
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
       margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+    .tracker-col-head-right {
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0;
+    }
+    .tracker-edit-btn {
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      background: var(--surface);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: .72rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .tracker-edit-btn:hover { border-color: var(--main-pale); color: var(--text); }
+    .tracker-col.edit-mode .tracker-edit-btn {
+      border-color: var(--main);
+      background: var(--main-pale);
+      color: var(--main);
+    }
+    .tracker-col.yj.edit-mode .tracker-edit-btn {
+      border-color: var(--yj);
+      background: var(--yj-glow);
+      color: var(--yj);
+    }
+    .tracker-col.sn.edit-mode .tracker-edit-btn {
+      border-color: var(--main);
+      background: var(--sn-glow);
+      color: var(--main);
     }
     .tracker-col-head h4 { font-size: 1rem; font-weight: 800; }
     .tracker-col.yj .tracker-col-head h4 { color: var(--yj); }

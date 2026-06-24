@@ -166,6 +166,7 @@ let trackerMonth = '7';
 let forecastYear = TRACKER_YEARS[0];
 let saveTimer = null;
 let storeMode = 'local';
+let trackerEditMode = { yj: false, sn: false };
 
 function sum(items) { return items.reduce((s, i) => s + i.amt, 0); }
 
@@ -961,7 +962,7 @@ function renderSavingsExtraSection(person) {
   const rows = lines.map(ln => renderSavingsExtraRow(person, ln)).join('');
   return `<div class="check-section-label savings">💰 목돈에서 (월급 제외)</div>
     <div class="savings-extra-list check-list">${rows}</div>
-    <button type="button" class="savings-add-btn" data-person="${person}">+ 목돈 항목 추가</button>`;
+    <button type="button" class="savings-add-btn tracker-edit-only" data-person="${person}">+ 목돈 항목 추가</button>`;
 }
 
 function renderCheckColumn(person, items, colorClass) {
@@ -973,21 +974,25 @@ function renderCheckColumn(person, items, colorClass) {
   const monthlyExtraRows = monthlyExtra.map(ln => renderMonthlyExtraRow(person, ln)).join('');
   const hidden = getHiddenItems(budgetChecks, trackerYear, trackerMonth, person);
   const hiddenNote = hidden.length
-    ? `<button type="button" class="hidden-restore-btn" data-person="${person}">숨긴 항목 ${hidden.length}개 되돌리기</button>` : '';
+    ? `<button type="button" class="hidden-restore-btn tracker-edit-only" data-person="${person}">숨긴 항목 ${hidden.length}개 되돌리기</button>` : '';
+  const editing = trackerEditMode[person];
 
   const label = person === 'yj' ? '영재' : '시온';
   const prog = `월급 ${w.checkedCount}/${w.total} · 목돈 ${w.savings.checkedCount}/${w.savings.total}`;
 
-  return `<div class="tracker-col ${colorClass}" data-col="${person}">
+  return `<div class="tracker-col ${colorClass}${editing ? ' edit-mode' : ''}" data-col="${person}">
     <div class="tracker-col-head">
       <h4>${label}</h4>
-      <span class="tracker-col-progress">${prog}</span>
+      <div class="tracker-col-head-right">
+        <span class="tracker-col-progress">${prog}</span>
+        <button type="button" class="tracker-edit-btn" data-person="${person}">${editing ? '완료' : '편집'}</button>
+      </div>
     </div>
     ${renderSavingsWalletTop(person)}
     ${renderWalletBox(person)}
     <div class="check-section-label">📅 월급에서 (실수령 기준)</div>
     <div class="check-list monthly-check-list" data-person="${person}">${monthlyRows}${monthlyExtraRows}</div>
-    <button type="button" class="monthly-add-btn" data-person="${person}">+ 월급 항목 추가</button>
+    <button type="button" class="monthly-add-btn tracker-edit-only" data-person="${person}">+ 월급 항목 추가</button>
     ${hiddenNote}
     ${renderSavingsExtraSection(person)}
   </div>`;
@@ -1020,6 +1025,17 @@ function attachTrackerEvents() {
         if (!wasOpen) panel.removeAttribute('hidden');
         else panel.setAttribute('hidden', '');
       }
+      return;
+    }
+
+    const editBtn = e.target.closest('.tracker-edit-btn');
+    if (editBtn) {
+      e.preventDefault();
+      const person = editBtn.dataset.person;
+      trackerEditMode[person] = !trackerEditMode[person];
+      const col = document.querySelector(`.tracker-col[data-col="${person}"]`);
+      if (col) col.classList.toggle('edit-mode', trackerEditMode[person]);
+      editBtn.textContent = trackerEditMode[person] ? '완료' : '편집';
       return;
     }
 
