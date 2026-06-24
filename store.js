@@ -115,6 +115,26 @@ export function getCheck(checks, year, month, person, itemId) {
   return false;
 }
 
+export function actualKey(person, itemId) {
+  return `${person}_${itemId}_actual`;
+}
+
+export function getActual(checks, year, month, person, itemId) {
+  const key = actualKey(person, itemId);
+  const m = checks?.[year]?.[month];
+  if (!m || m[key] === undefined || m[key] === null || m[key] === "") return null;
+  return Number(m[key]);
+}
+
+export function setActual(checks, year, month, person, itemId, value) {
+  const next = structuredClone(checks);
+  if (!next[year]) next[year] = {};
+  if (!next[year][month]) next[year][month] = {};
+  const n = String(value).replace(/,/g, "").trim();
+  next[year][month][actualKey(person, itemId)] = n === "" ? "" : Number(n);
+  return next;
+}
+
 export function setCheck(checks, year, month, person, itemId, value) {
   const next = structuredClone(checks);
   if (!next[year]) next[year] = {};
