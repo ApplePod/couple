@@ -1,11 +1,15 @@
 /** 투자 전망 — 실제(체크리스트) + 예상(월 계획·연 한도) */
 
-export const INVEST_CATEGORY_IDS = ["isa", "irp", "pension", "kr", "us", "crypto"];
+export const INVEST_CATEGORY_IDS = [
+  "isa", "irp", "pension", "youth", "housing", "kr", "us", "crypto",
+];
 
 export const INVEST_CATEGORIES = [
   { id: "isa", name: "ISA", color: "#4f8ef7" },
   { id: "irp", name: "IRP", color: "#6366f1", limitNote: "연 한도 인당 300만" },
   { id: "pension", name: "연금저축", color: "#8b5cf6", limitNote: "연 한도 인당 600만" },
+  { id: "youth", name: "청년적금", color: "#FFCA67", limitNote: "미래·도약 합산" },
+  { id: "housing", name: "주택청약", color: "#c9b589" },
   { id: "kr", name: "국장", color: "#22c55e" },
   { id: "us", name: "미장", color: "#06b6d4" },
   { id: "crypto", name: "코인+금", color: "#f59e0b" },
@@ -22,7 +26,7 @@ function emptyYearBucket() {
   return Object.fromEntries(INVEST_CATEGORY_IDS.map((id) => [id, 0]));
 }
 
-function isInvestItem(it) {
+function isForecastItem(it) {
   return INVEST_CATEGORY_IDS.includes(it.id);
 }
 
@@ -47,7 +51,7 @@ export function aggregateProjectedYear(year, { yjItems, snItems }) {
 
   const addPerson = (person, items) => {
     for (const it of items) {
-      if (!isInvestItem(it)) continue;
+      if (!isForecastItem(it)) continue;
 
       if (it.julyOnly && it.fromSavings) {
         if (year === PLAN_START.year) bucket[it.id] += it.amt;
@@ -81,7 +85,7 @@ export function aggregateActualInvestments(checks, getActual, { yjItems, snItems
       if (!byYear[year]) byYear[year] = emptyYearBucket();
       for (const [month] of Object.entries(months || {})) {
         for (const it of items) {
-          if (!isInvestItem(it)) continue;
+          if (!isForecastItem(it)) continue;
           if (it.julyOnly && month !== "7") continue;
           const actual = getActual(checks, year, month, person, it.id);
           if (actual === null || actual === undefined || actual === "") continue;
@@ -105,7 +109,7 @@ export function countRecordedMonths(checks, getActual, { yjItems, snItems }) {
     for (const [year, months] of Object.entries(checks || {})) {
       for (const [month] of Object.entries(months || {})) {
         for (const it of items) {
-          if (!isInvestItem(it)) continue;
+          if (!isForecastItem(it)) continue;
           if (it.julyOnly && month !== "7") continue;
           const actual = getActual(checks, year, month, person, it.id);
           if (actual === null || actual === undefined || actual === "") continue;

@@ -1101,7 +1101,7 @@ function renderForecast() {
     <div class="forecast-header">
       <div>
         <h3>📈 투자 전망</h3>
-        <p>월 계획 <strong>예상</strong> vs 체크리스트 <strong>실제</strong> · ${PLAN_START.year}년 ${PLAN_START.month}월부터 관리 시작</p>
+        <p>저축·투자·적금·청약 — 월 계획 <strong>예상</strong> vs 체크리스트 <strong>실제</strong></p>
       </div>
     </div>
     <div class="forecast-year-tabs" id="forecast-year-tabs">${yearTabs}</div>
@@ -1178,7 +1178,7 @@ function renderForecast() {
       </table>
     </div>
     <p class="forecast-note">
-      · <strong>예상</strong>: 체크리스트 월 계획 금액 기준 (${PLAN_START.year}년은 ${planMonthsInYear(PLAN_START.year)}개월)<br>
+      · <strong>예상</strong>: 체크리스트 월 계획 기준 (${PLAN_START.year}년은 ${planMonthsInYear(PLAN_START.year)}개월) · 청년적금=미래+도약 합산<br>
       · IRP 연 한도 인당 ${(ANNUAL_LIMIT_PER_PERSON.irp / 10000).toFixed(0)}만 · 연금저축 연 한도 인당 ${(ANNUAL_LIMIT_PER_PERSON.pension / 10000).toFixed(0)}만 반영<br>
       · <strong>실제</strong>: 체크리스트에 입력한 금액만 합산 · 수익률 미반영
     </p>`;
