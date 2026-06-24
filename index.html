@@ -798,7 +798,7 @@
 <script src="supabase-config.js"></script>
 <script type="module">
 import { initStore, loadChecks, saveChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail } from './store.js';
-import { FORECAST_YEARS, INVEST_CATEGORIES, calcYearBreakdown, calcCumulative } from './forecast.js';
+import { INVEST_CATEGORIES, aggregateActualInvestments, calcYearBreakdown, calcCumulative, getForecastYears, countRecordedMonths, totalInvested } from './forecast.js';
 
 const fmt = n => n.toLocaleString('ko-KR') + '원';
 const fmtShort = n => {
@@ -1370,6 +1370,7 @@ function updateWalletSummaries() {
   if (bar) bar.style.width = (all ? done / all * 100 : 0) + '%';
   const cnt = document.getElementById('household-check-count');
   if (cnt) cnt.textContent = `${done}/${all}`;
+  renderForecast();
 }
 
 const LIVING_DETAIL_EXTRA = ['여행', '주거비', '월세 대출이자', '전기세', '가스료', '수도요금', '인터넷', '윌리엄 할부', '기타'];
@@ -1714,17 +1715,31 @@ function renderWilliam() {
 }
 
 function renderForecast() {
-  const cum = calcCumulative(FORECAST_YEARS[FORECAST_YEARS.length - 1]);
-  const y2026 = cum[2026]?.cumulative || 0;
-  const yLast = cum[FORECAST_YEARS[FORECAST_YEARS.length - 1]]?.cumulative || 0;
-  const maxAnnual = Math.max(...FORECAST_YEARS.map(y => calcYearBreakdown(y).total));
+  const byYear = aggregateActualInvestments(budgetChecks, getActual, {
+    yjItems: YJ_CHECK_ITEMS,
+    snItems: SN_CHECK_ITEMS,
+  });
+  const years = getForecastYears(byYear, TRACKER_YEARS);
+  const cum = calcCumulative(byYear, years);
+  const grandTotal = totalInvested(byYear);
+  const monthCount = countRecordedMonths(budgetChecks, getActual, {
+    yjItems: YJ_CHECK_ITEMS,
+    snItems: SN_CHECK_ITEMS,
+  });
+  const yearsWithData = years.filter((y) => calcYearBreakdown(byYear, y).total > 0);
+  const latestActiveYear = yearsWithData[yearsWithData.length - 1];
+  const latestAnnual = latestActiveYear ? calcYearBreakdown(byYear, latestActiveYear).total : 0;
+  const maxAnnual = Math.max(1, ...years.map((y) => calcYearBreakdown(byYear, y).total));
+  const avgMonthly = monthCount ? Math.round(grandTotal / monthCount) : 0;
+
+  const hasData = grandTotal > 0;
 
   const legend = INVEST_CATEGORIES.map(c =>
     `<span><i style="background:${c.color}"></i>${c.name}</span>`
   ).join('');
 
-  const chartRows = FORECAST_YEARS.map(year => {
-    const { breakdown, total } = calcYearBreakdown(year);
+  const chartRows = hasData ? years.map(year => {
+    const { breakdown, total } = calcYearBreakdown(byYear, year);
     const segs = INVEST_CATEGORIES.map(cat => {
       const amt = breakdown[cat.id]?.amount || 0;
       const w = maxAnnual ? (amt / maxAnnual * 100) : 0;
@@ -1733,61 +1748,64 @@ function renderForecast() {
     }).join('');
     return `<div class="fc-year-row">
       <div class="fc-year-label">${year}</div>
-      <div class="fc-bar-track">${segs}</div>
-      <div class="fc-year-total">${fmt(total)}</div>
+      <div class="fc-bar-track">${segs || '<span style="font-size:.72rem;color:var(--muted);padding:8px">입력 없음</span>'}</div>
+      <div class="fc-year-total">${total ? fmt(total) : '—'}</div>
     </div>`;
-  }).join('');
+  }).join('') : `<div class="config-hint" style="margin:0">체크리스트 투자 항목에 <strong>실제 금액</strong>을 입력하면 여기에 반영됩니다.</div>`;
 
-  const tableHead = `<tr><th>항목</th>${FORECAST_YEARS.map(y => `<th>${y}년</th>`).join('')}<th>5년 합계</th></tr>`;
+  const tableHead = `<tr><th>항목</th>${years.map(y => `<th>${y}년</th>`).join('')}<th>합계</th></tr>`;
   const catRows = INVEST_CATEGORIES.map(cat => {
     let rowSum = 0;
-    const cells = FORECAST_YEARS.map(y => {
-      const amt = calcYearBreakdown(y).breakdown[cat.id]?.amount || 0;
+    const cells = years.map(y => {
+      const amt = calcYearBreakdown(byYear, y).breakdown[cat.id]?.amount || 0;
       rowSum += amt;
       return `<td>${amt ? fmt(amt) : '—'}</td>`;
     }).join('');
-    return `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cat.color};margin-right:6px"></span>${cat.name}</td>${cells}<td>${fmt(rowSum)}</td></tr>`;
+    return `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cat.color};margin-right:6px"></span>${cat.name}</td>${cells}<td>${rowSum ? fmt(rowSum) : '—'}</td></tr>`;
   }).join('');
 
-  const annualCells = FORECAST_YEARS.map(y => `<td>${fmt(calcYearBreakdown(y).total)}</td>`).join('');
-  const cumCells = FORECAST_YEARS.map(y => `<td>${fmt(cum[y]?.cumulative || 0)}</td>`).join('');
+  const annualCells = years.map(y => {
+    const t = calcYearBreakdown(byYear, y).total;
+    return `<td>${t ? fmt(t) : '—'}</td>`;
+  }).join('');
+  const cumCells = years.map(y => `<td>${cum[y]?.cumulative ? fmt(cum[y].cumulative) : '—'}</td>`).join('');
 
   document.getElementById('forecast-section').innerHTML = `
     <div class="forecast-header">
       <div>
         <h3>📈 투자 전망</h3>
-        <p>ISA · IRP · 연금저축 · 국장 · 미장 · 코인+금 — 월 자동이체 계획 기준 (청약·적금 제외)</p>
+        <p>체크리스트에 입력한 <strong>실제 투자 금액</strong> 기준 · ISA · IRP · 연금저축 · 국장 · 미장 · 코인+금</p>
       </div>
     </div>
     <div class="forecast-hero">
       <div class="forecast-hero-card highlight">
-        <div class="fh-label">2026년 누적</div>
-        <div class="fh-value">${fmt(y2026)}</div>
+        <div class="fh-label">총 누적 (실제)</div>
+        <div class="fh-value">${hasData ? fmt(grandTotal) : '—'}</div>
       </div>
       <div class="forecast-hero-card">
-        <div class="fh-label">${FORECAST_YEARS[FORECAST_YEARS.length - 1]}년 누적</div>
-        <div class="fh-value">${fmt(yLast)}</div>
+        <div class="fh-label">${latestActiveYear ? `${latestActiveYear}년` : '최근'} 실적</div>
+        <div class="fh-value">${latestAnnual ? fmt(latestAnnual) : '—'}</div>
       </div>
       <div class="forecast-hero-card">
-        <div class="fh-label">월 투자 합계 (2인)</div>
-        <div class="fh-value">${fmt(calcYearBreakdown(2027).total / 12)}</div>
+        <div class="fh-label">월 평균 (${monthCount}개월 기록)</div>
+        <div class="fh-value">${avgMonthly ? fmt(avgMonthly) : '—'}</div>
       </div>
     </div>
     <div class="forecast-legend">${legend}</div>
     <div class="fc-chart">${chartRows}</div>
-    <div class="forecast-table-wrap">
+    ${hasData ? `<div class="forecast-table-wrap">
       <table class="forecast-table">
         <thead>${tableHead}</thead>
         <tbody>
           ${catRows}
-          <tr class="total-row"><td>연간 적립 합계</td>${annualCells}<td>${fmt(yLast)}</td></tr>
-          <tr class="cum-row"><td>누적 합계</td>${cumCells}<td>${fmt(yLast)}</td></tr>
+          <tr class="total-row"><td>연간 합계</td>${annualCells}<td>${fmt(grandTotal)}</td></tr>
+          <tr class="cum-row"><td>누적 합계</td>${cumCells}<td>${fmt(grandTotal)}</td></tr>
         </tbody>
       </table>
-    </div>
+    </div>` : ''}
     <p class="forecast-note">
-      · 2026년 ISA에 영재 목돈 2,000만원(7월 일시) 포함 · 이후 연도는 월 납입만 반영<br>
-      · 수익률·환율 미반영 순 납입액 기준 · 실제 체크리스트 실적과 별도
+      · 체크리스트 투자 항목의 「실제 금액」만 합산합니다 (계획 금액·미입력 월 제외)<br>
+      · 상세 입력(종목·분류) 합계가 실제 금액에 반영되면 자동 집계 · 수익률 미반영
     </p>`;
 }
 
@@ -1817,6 +1835,7 @@ renderForecast();
 const store = await initStore((remote) => {
   budgetChecks = remote;
   renderTracker();
+  renderForecast();
 });
 storeMode = store.mode;
 renderTracker();
