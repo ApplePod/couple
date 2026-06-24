@@ -1,4 +1,4 @@
-/** 사용자 손그림 PNG — 200+ 프로시저럴 몸동작 포즈 */
+/** 자연스러운 펫 모션 — 연속 호흡·흔들림 + 가끔 제스처 */
 
 const POSES = {
   front: "assets/pet/char-front.png",
@@ -6,112 +6,18 @@ const POSES = {
   wave: "assets/pet/char-wave.png",
 };
 
-const HAIR = [
-  "assets/pet/hair-01.png",
-  "assets/pet/hair-02.png",
-  "assets/pet/hair-03.png",
-  "assets/pet/hair-04.png",
-  "assets/pet/hair-05.png",
-  "assets/pet/hair-06.png",
-  "assets/pet/hair-07.png",
-  "assets/pet/hair-08.png",
-  "assets/pet/hair-09.png",
-];
-
-const POSE_COUNT = 200;
-
-/** 20가지 기본 동작 × 10 variation = 200포즈 */
-const BASE_MOTIONS = [
-  { tag: "서있기", ty: 0, tx: 0, rot: 0, sx: 1, sy: 1 },
-  { tag: "살짝왼쪽", ty: -1, tx: -2, rot: -3, sx: 1, sy: 1 },
-  { tag: "살짝오른쪽", ty: -1, tx: 2, rot: 3, sx: 1, sy: 1 },
-  { tag: "통통1", ty: -4, tx: 0, rot: -1, sx: 1.02, sy: 1.03 },
-  { tag: "통통2", ty: -8, tx: 0, rot: 0, sx: 1.03, sy: 1.04 },
-  { tag: "높이뛰기", ty: -13, tx: 0, rot: 1, sx: 1.06, sy: 1.06 },
-  { tag: "착지눌림", ty: 2, tx: 0, rot: 0, sx: 1.07, sy: 0.88 },
-  { tag: "흔들왼", ty: -3, tx: -4, rot: -8, sx: 1.01, sy: 1 },
-  { tag: "흔들오른", ty: -3, tx: 4, rot: 8, sx: 1.01, sy: 1 },
-  { tag: "앞으로숙임", ty: -2, tx: -3, rot: -6, sx: 1.02, sy: 0.96 },
-  { tag: "뒤로쪼그림", ty: 1, tx: 0, rot: 2, sx: 0.96, sy: 0.94 },
-  { tag: "손흔들기", ty: -6, tx: 2, rot: 5, sx: 1.03, sy: 1.02 },
-  { tag: "하트던지기", ty: -5, tx: -2, rot: -5, sx: 1.02, sy: 1.02 },
-  { tag: "깡총깡총", ty: -10, tx: 1, rot: -4, sx: 1.04, sy: 1.05 },
-  { tag: "수줍", ty: 0, tx: 0, rot: 0, sx: 0.94, sy: 0.96 },
-  { tag: "뿌듯", ty: -4, tx: 0, rot: 0, sx: 1.05, sy: 1.05 },
-  { tag: "알에서고개", ty: -5, tx: 0, rot: 2, sx: 0.95, sy: 0.97 },
-  { tag: "알에서삐짐", ty: -3, tx: -3, rot: -6, sx: 0.93, sy: 0.95 },
-  { tag: "빙글", ty: -4, tx: 0, rot: -11, sx: 1.02, sy: 1.01 },
-  { tag: "콩닥콩닥", ty: -6, tx: -2, rot: 6, sx: 1.03, sy: 0.98 },
-];
-
-const STAGE_SRC_POOL = {
-  1: () => [POSES.front],
-  2: () => [HAIR[0], HAIR[1], POSES.front, POSES.front],
-  3: () => [HAIR[2], HAIR[3], POSES.front, POSES.wave, POSES.front],
-  4: () => [POSES.front, POSES.heart, POSES.heart, POSES.front, HAIR[4]],
-  5: () => [POSES.wave, POSES.front, POSES.heart, POSES.wave, HAIR[7], POSES.front],
-  6: () => [POSES.wave, POSES.heart, POSES.wave, POSES.front, HAIR[8], POSES.heart],
+const STAGE_CFG = {
+  1: { src: POSES.front, egg: true, gestures: ["peek", "hop"] },
+  2: { src: POSES.front, gestures: ["hop", "happy"] },
+  3: { src: POSES.front, gestures: ["hop", "happy", "wave"], gestureSrc: POSES.wave },
+  4: { src: POSES.heart, gestures: ["happy", "hop"] },
+  5: { src: POSES.wave, gestures: ["wave", "hop", "happy"] },
+  6: { src: POSES.wave, gestures: ["wave", "happy", "hop"], gestureSrc: POSES.heart },
 };
 
-function isHairSrc(src) {
-  return src.includes("hair-");
-}
-
-function isBodySrc(src, key) {
-  return src === POSES[key];
-}
-
-function mulberry32(seed) {
-  return () => {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function round1(n) {
-  return Math.round(n * 10) / 10;
-}
-
-function generatePoseLibrary(stageId) {
-  const pool = STAGE_SRC_POOL[stageId]?.() || STAGE_SRC_POOL[1]();
-  const rand = mulberry32(stageId * 9973 + 42);
-  const poses = [];
-
-  for (let i = 0; i < POSE_COUNT; i++) {
-    const base = BASE_MOTIONS[i % BASE_MOTIONS.length];
-    const varIdx = Math.floor(i / BASE_MOTIONS.length);
-    const jitter = rand() * 2 - 1;
-    const src = pool[i % pool.length];
-    const egg = stageId === 1 && (base.tag.startsWith("알") || i % 4 === 0);
-    const bust = isHairSrc(src);
-    const flip =
-      (isBodySrc(src, "wave") && i % 3 === 0) ||
-      (isBodySrc(src, "heart") && i % 5 === 1) ||
-      (bust && i % 6 === 2);
-
-    poses.push({
-      src,
-      egg,
-      bust,
-      flip,
-      ty: round1(base.ty + varIdx * -0.35 + jitter * 0.8),
-      tx: round1(base.tx + (varIdx % 3 - 1) * 1.2 + jitter * 1.5),
-      rot: round1(base.rot + (varIdx % 5 - 2) * 1.8 + jitter * 2),
-      sx: round1(Math.max(0.9, Math.min(1.1, base.sx + varIdx * 0.004 + jitter * 0.01))),
-      sy: round1(Math.max(0.86, Math.min(1.08, base.sy + varIdx * 0.003 + jitter * 0.01))),
-      ms: 260 + (i % 9) * 35 + Math.floor(rand() * 40),
-    });
-  }
-
-  return poses;
-}
-
-const STAGE_POSES = Object.fromEntries(
-  [1, 2, 3, 4, 5, 6].map((id) => [id, generatePoseLibrary(id)])
-);
+let _raf = null;
+let _gestureTimer = null;
+let _state = null;
 
 function eggShell() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true" class="fm-egg-shell">
@@ -120,61 +26,182 @@ function eggShell() {
   </svg>`;
 }
 
-function buildFrame(frame) {
-  const bust = frame.bust ? " fm-panda-bust" : "";
-  const flip = frame.flip ? " fm-panda-flip" : "";
-  const img = `<img src="${frame.src}" alt="" class="fm-panda-art${bust}${flip}" draggable="false" decoding="async">`;
+function buildDOM(cfg) {
+  const img = `<img src="${cfg.src}" alt="" class="fm-panda-art" draggable="false" decoding="async">`;
+  const inner = cfg.egg
+    ? `<div class="fm-panda-egg"><div class="fm-panda-peek-wrap">${img}</div>${eggShell()}</div>`
+    : img;
+  return `<div class="fm-panda-motion">${inner}</div>`;
+}
 
-  if (frame.egg) {
-    return `<div class="fm-panda-egg">
-      <div class="fm-panda-peek-wrap">${img}</div>
-      ${eggShell()}
-    </div>`;
+function easeInOutSine(t) {
+  return -(Math.cos(Math.PI * t) - 1) / 2;
+}
+
+/** 매 프레임 부드러운 idle — 여러 sin파를 섞어 살아있는 느낌 */
+function idleMotion(t, stageId) {
+  const amp = stageId === 1 ? 0.65 : 1;
+  const ty =
+    (Math.sin(t * 1.12) * 1.6 + Math.sin(t * 2.27 + 0.4) * 0.35) * amp;
+  const tx = Math.sin(t * 0.36 + 1.1) * 0.7 * amp;
+  const rot =
+    (Math.sin(t * 0.41 + 0.2) * 0.9 + Math.sin(t * 0.19) * 0.35) * amp;
+  const sy = 1 + Math.sin(t * 1.12) * 0.01 * amp;
+  const sx = 1 - Math.sin(t * 1.12) * 0.005 * amp;
+  return { ty, tx, rot, sx, sy };
+}
+
+/** 제스처는 짧고 물리감 있게 — idle 위에 더함 */
+function gestureOffset(name, p) {
+  const e = easeInOutSine(Math.min(1, Math.max(0, p)));
+
+  switch (name) {
+    case "hop": {
+      const up = p < 0.38 ? Math.sin((p / 0.38) * Math.PI) : 0;
+      const land = p >= 0.38 ? Math.exp(-((p - 0.38) * 9)) * 0.55 : 0;
+      const ty = -(up * 10 + land * 2.5);
+      const sy = p > 0.36 && p < 0.52 ? 0.9 + (p - 0.36) * 0.5 : 1;
+      const sx = p > 0.36 && p < 0.52 ? 1.04 - (p - 0.36) * 0.2 : 1;
+      return { ty, tx: 0, rot: up * -2, sx, sy };
+    }
+    case "happy": {
+      const wiggle = Math.sin(p * Math.PI * 4) * (1 - e) * 3.5;
+      return { ty: -e * 3, tx: wiggle, rot: wiggle * 0.55, sx: 1, sy: 1 };
+    }
+    case "peek": {
+      const rise = Math.sin(e * Math.PI) * 5;
+      return { ty: -rise, tx: 0, rot: e * 2.5, sx: 1, sy: 1 };
+    }
+    case "wave": {
+      const sway = Math.sin(e * Math.PI) * 4;
+      return { ty: -sway * 0.6, tx: sway * 0.35, rot: sway * 0.45, sx: 1, sy: 1 };
+    }
+    case "heart": {
+      const lean = Math.sin(e * Math.PI);
+      return { ty: -lean * 2, tx: -lean * 1.5, rot: -lean * 3, sx: 1, sy: 1 };
+    }
+    default:
+      return { ty: 0, tx: 0, rot: 0, sx: 1, sy: 1 };
+  }
+}
+
+function gestureDuration(name) {
+  return { hop: 820, happy: 1050, peek: 1300, wave: 1150, heart: 980 }[name] || 900;
+}
+
+function applyTransform(el, m) {
+  el.style.transform = `translate3d(${m.tx}px, ${m.ty}px, 0) rotate(${m.rot}deg) scale(${m.sx}, ${m.sy})`;
+}
+
+function blendMotion(a, b, amount) {
+  const k = Math.min(1, Math.max(0, amount));
+  return {
+    ty: a.ty + b.ty * k,
+    tx: a.tx + b.tx * k,
+    rot: a.rot + b.rot * k,
+    sx: a.sx * (1 + (b.sx - 1) * k),
+    sy: a.sy * (1 + (b.sy - 1) * k),
+  };
+}
+
+function swapPoseImage(imgEl, src, homeSrc) {
+  if (!imgEl || imgEl.getAttribute("src") === src) return;
+  imgEl.classList.add("fm-panda-fade");
+  requestAnimationFrame(() => {
+    imgEl.src = src;
+    imgEl.classList.remove("fm-panda-fade");
+  });
+  if (homeSrc && src !== homeSrc) {
+    clearTimeout(imgEl._restoreTimer);
+    imgEl._restoreTimer = setTimeout(() => {
+      swapPoseImage(imgEl, homeSrc, homeSrc);
+    }, gestureDuration("wave") + 200);
+  }
+}
+
+function pickGesture(cfg) {
+  const list = cfg.gestures || ["hop"];
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function scheduleGesture() {
+  if (!_state) return;
+  const wait = 9000 + Math.random() * 9000;
+  _gestureTimer = setTimeout(() => {
+    if (!_state) return;
+    if (_state.gesture) {
+      scheduleGesture();
+      return;
+    }
+    const name = pickGesture(_state.cfg);
+    const useAlt =
+      (name === "wave" || name === "heart") && _state.cfg.gestureSrc;
+    if (useAlt && _state.imgEl) {
+      swapPoseImage(_state.imgEl, _state.cfg.gestureSrc, _state.cfg.src);
+    }
+    _state.gesture = {
+      name,
+      start: performance.now(),
+      duration: gestureDuration(name),
+    };
+  }, wait);
+}
+
+function animationLoop(now) {
+  if (!_state) return;
+  const t = (now - _state.t0) / 1000;
+  let motion = idleMotion(t, _state.stageId);
+
+  if (_state.gesture) {
+    const g = _state.gesture;
+    const p = (now - g.start) / g.duration;
+    if (p >= 1) {
+      _state.gesture = null;
+      scheduleGesture();
+    } else {
+      const fade = p < 0.12 ? p / 0.12 : p > 0.88 ? (1 - p) / 0.12 : 1;
+      motion = blendMotion(motion, gestureOffset(g.name, p), fade);
+    }
   }
 
-  return img;
+  applyTransform(_state.motionEl, motion);
+  _raf = requestAnimationFrame(animationLoop);
 }
 
-function applyPoseTransform(el, frame) {
-  el.style.setProperty("--fm-tx", `${frame.tx}px`);
-  el.style.setProperty("--fm-ty", `${frame.ty}px`);
-  el.style.setProperty("--fm-rot", `${frame.rot}deg`);
-  el.style.setProperty("--fm-sx", String(frame.sx));
-  el.style.setProperty("--fm-sy", String(frame.sy));
-}
-
-export const PANDA_FRAME_COUNT = POSE_COUNT;
-
-export function getPoseFrames(stageId) {
-  return STAGE_POSES[stageId] || STAGE_POSES[1];
-}
-
-let _animTimer = null;
+export const PANDA_FRAME_COUNT = 1;
 
 export function startPandaAnimation(stageId) {
   stopPandaAnimation();
-  const el = document.querySelector(".fm-panda-sprite");
-  if (!el) return;
+  const sprite = document.querySelector(".fm-panda-sprite");
+  if (!sprite) return;
 
-  const frames = getPoseFrames(stageId);
-  let i = 0;
+  const cfg = STAGE_CFG[stageId] || STAGE_CFG[1];
+  sprite.innerHTML = buildDOM(cfg);
 
-  const tick = () => {
-    const frame = frames[i];
-    el.innerHTML = buildFrame(frame);
-    el.className = "fm-panda-sprite";
-    applyPoseTransform(el, frame);
-    const ms = frame.ms || 340;
-    i = (i + 1) % frames.length;
-    _animTimer = setTimeout(tick, ms);
+  _state = {
+    stageId,
+    cfg,
+    motionEl: sprite.querySelector(".fm-panda-motion"),
+    imgEl: sprite.querySelector(".fm-panda-art"),
+    t0: performance.now(),
+    gesture: null,
   };
 
-  tick();
+  _raf = requestAnimationFrame(animationLoop);
+  scheduleGesture();
 }
 
 export function stopPandaAnimation() {
-  if (_animTimer) {
-    clearTimeout(_animTimer);
-    _animTimer = null;
+  if (_raf) {
+    cancelAnimationFrame(_raf);
+    _raf = null;
   }
+  if (_gestureTimer) {
+    clearTimeout(_gestureTimer);
+    _gestureTimer = null;
+  }
+  if (_state?.imgEl?._restoreTimer) {
+    clearTimeout(_state.imgEl._restoreTimer);
+  }
+  _state = null;
 }
