@@ -380,6 +380,23 @@
     .hw-item.remain .hv { color: var(--green); }
     .hw-item.remain.neg .hv { color: var(--red); }
 
+    .check-section-label {
+      font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+      color: var(--muted); margin: 16px 0 8px; padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .check-section-label.savings { color: var(--amber); border-color: rgba(251,191,36,.25); }
+    .savings-wallet {
+      padding: 12px 14px; border-radius: var(--radius-sm);
+      background: var(--amber-dim); border: 1px solid rgba(251,191,36,.2);
+      margin-bottom: 12px; font-size: .82rem;
+    }
+    .savings-wallet .sw-row {
+      display: flex; justify-content: space-between; margin-top: 4px;
+    }
+    .savings-wallet .sw-row .wv { font-weight: 700; color: var(--amber); }
+    .check-item .ci-name small.tag-savings { color: var(--amber); }
+
     @media (max-width: 500px) {
       .check-item { grid-template-columns: 22px 1fr; gap: 8px; }
       .check-item .ci-plan { grid-column: 2; text-align: left; }
@@ -722,7 +739,7 @@ const MONTH_LABELS = ['1월','2월','3월','4월','5월','6월','7월','8월','9
 
 /* 체크리스트 항목 */
 const YJ_CHECK_ITEMS = [
-  { id: 'isa', name: 'ISA 목돈', note: '7월 일시불 2천만', amt: 20000000, auto: true, julyOnly: true },
+  { id: 'isa', name: 'ISA 목돈', note: '7월 일시불 2천만', amt: 20000000, auto: true, julyOnly: true, fromSavings: true },
   { id: 'irp', name: 'IRP', note: 'ETF 장투', amt: 500000, auto: true },
   { id: 'pension', name: '연금저축펀드', note: '고영 ETF', amt: 1000000, auto: true },
   { id: 'youth', name: '청년미래적금', note: '', amt: 500000, auto: true },
@@ -1102,9 +1119,36 @@ function getVisibleItems(person) {
   return items.filter(it => !it.julyOnly || trackerMonth === '7');
 }
 
+function getMonthlyItems(person) {
+  return getVisibleItems(person).filter(it => !it.fromSavings);
+}
+
+function getSavingsItems(person) {
+  return getVisibleItems(person).filter(it => it.fromSavings);
+}
+
+function itemSubLabel(it) {
+  if (it.fromSavings) return '<small class="tag-savings">목돈 · 월급 제외</small>';
+  if (it.auto) return '<small>자동이체</small>';
+  return '<small>직접 관리</small>';
+}
+
+function calcSavingsStats(person) {
+  const items = getSavingsItems(person);
+  let planned = 0, actual = 0, checkedCount = 0;
+  for (const it of items) {
+    if (!getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id)) continue;
+    checkedCount++;
+    planned += it.amt;
+    const a = getActual(budgetChecks, trackerYear, trackerMonth, person, it.id);
+    actual += a !== null ? a : it.amt;
+  }
+  return { planned, actual, checkedCount, total: items.length };
+}
+
 function calcPersonWallet(person) {
   const income = person === 'yj' ? YJ.income : SN.income;
-  const items = getVisibleItems(person);
+  const items = getMonthlyItems(person);
   let plannedChecked = 0;
   let actualSpent = 0;
   let checkedCount = 0;
@@ -1116,10 +1160,11 @@ function calcPersonWallet(person) {
     actualSpent += actual !== null ? actual : it.amt;
   }
   const spendPct = income > 0 ? Math.min(100, actualSpent / income * 100) : 0;
+  const savings = calcSavingsStats(person);
   return {
     income, plannedChecked, actualSpent,
     remaining: income - actualSpent,
-    checkedCount, total: items.length, spendPct,
+    checkedCount, total: items.length, spendPct, savings,
   };
 }
 
@@ -1136,16 +1181,22 @@ function parseActualInput(str) {
 function renderWalletBox(person) {
   const w = calcPersonWallet(person);
   const remCls = w.remaining >= 0 ? 'positive' : 'negative';
+  const sav = w.savings.total > 0 ? `
+    <div class="savings-wallet" id="savings-wallet-${person}">
+      <div style="font-size:.72rem;color:var(--amber);font-weight:700">목돈에서 (월급과 별도)</div>
+      <div class="sw-row"><span class="wl">목돈 사용</span><span class="wv" id="w-savings-${person}">${fmt(w.savings.actual)}</span></div>
+      <div class="sw-row" style="font-size:.72rem;color:var(--muted)"><span>체크</span><span id="w-savings-chk-${person}">${w.savings.checkedCount}/${w.savings.total}</span></div>
+    </div>` : '';
   return `<div class="wallet-box" id="wallet-${person}">
     <div class="wallet-income">${fmt(w.income)}</div>
-    <div class="wallet-sub">월 실수령액</div>
+    <div class="wallet-sub">월 실수령액 (월급 기준)</div>
     <div class="wallet-rows">
       <div class="wallet-row"><span class="wl">계획 (체크 합계)</span><span class="wv" id="w-planned-${person}">${fmt(w.plannedChecked)}</span></div>
       <div class="wallet-row"><span class="wl">실제 지출</span><span class="wv" id="w-actual-${person}">${fmt(w.actualSpent)}</span></div>
       <div class="wallet-row remain ${remCls}"><span class="wl">남는 돈</span><span class="wv" id="w-remain-${person}">${w.remaining < 0 ? '−' : ''}${fmt(Math.abs(w.remaining))}</span></div>
     </div>
     <div class="wallet-bar"><div class="wallet-bar-fill" id="w-bar-${person}" style="width:${w.spendPct.toFixed(1)}%"></div></div>
-  </div>`;
+  </div>${sav}`;
 }
 
 function updateWalletSummaries() {
@@ -1159,8 +1210,16 @@ function updateWalletSummaries() {
     el(`w-remain-${person}`).closest('.wallet-row').className =
       `wallet-row remain ${w.remaining >= 0 ? 'positive' : 'negative'}`;
     el(`w-bar-${person}`).style.width = w.spendPct.toFixed(1) + '%';
+    const savEl = el(`w-savings-${person}`);
+    if (savEl) savEl.textContent = fmt(w.savings.actual);
+    const savChk = el(`w-savings-chk-${person}`);
+    if (savChk) savChk.textContent = `${w.savings.checkedCount}/${w.savings.total}`;
     const prog = document.querySelector(`.tracker-col.${person} .tracker-col-progress`);
-    if (prog) prog.textContent = `${w.checkedCount}/${w.total}`;
+    if (prog) {
+      let t = `월급 ${w.checkedCount}/${w.total}`;
+      if (w.savings.total > 0) t += ` · 목돈 ${w.savings.checkedCount}/${w.savings.total}`;
+      prog.textContent = t;
+    }
   }
   const yj = calcPersonWallet('yj');
   const sn = calcPersonWallet('sn');
@@ -1187,31 +1246,42 @@ function updateWalletSummaries() {
   if (cnt) cnt.textContent = `${done}/${all}`;
 }
 
+function renderCheckRow(person, it) {
+  const checked = getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id);
+  const actual = getActual(budgetChecks, trackerYear, trackerMonth, person, it.id);
+  return `<div class="check-item${checked ? ' done' : ''}" data-person="${person}" data-id="${it.id}">
+    <input type="checkbox" class="ci-check" data-person="${person}" data-id="${it.id}" ${checked ? 'checked' : ''}>
+    <div class="ci-name">${it.name}${itemSubLabel(it)}</div>
+    <div class="ci-plan"><span>계획</span>${fmtShort(it.amt)}</div>
+    <input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
+      placeholder="실제 금액" inputmode="numeric"
+      value="${formatActualInput(actual)}">
+  </div>`;
+}
+
 function renderCheckColumn(person, items, colorClass) {
-  const visible = items.filter(it => !it.julyOnly || trackerMonth === '7');
+  const monthly = getMonthlyItems(person);
+  const savings = getSavingsItems(person);
   const w = calcPersonWallet(person);
 
-  const rows = visible.map(it => {
-    const checked = getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id);
-    const actual = getActual(budgetChecks, trackerYear, trackerMonth, person, it.id);
-    return `<div class="check-item${checked ? ' done' : ''}" data-person="${person}" data-id="${it.id}">
-      <input type="checkbox" class="ci-check" data-person="${person}" data-id="${it.id}" ${checked ? 'checked' : ''}>
-      <div class="ci-name">${it.name}${it.auto ? '<small>자동이체</small>' : '<small>직접 관리</small>'}</div>
-      <div class="ci-plan"><span>계획</span>${fmtShort(it.amt)}</div>
-      <input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
-        placeholder="실제 금액" inputmode="numeric"
-        value="${formatActualInput(actual)}">
-    </div>`;
-  }).join('');
+  const monthlyRows = monthly.map(it => renderCheckRow(person, it)).join('');
+  const savingsBlock = savings.length ? `
+    <div class="check-section-label savings">💰 목돈에서 (월급 제외)</div>
+    <div class="check-list">${savings.map(it => renderCheckRow(person, it)).join('')}</div>` : '';
 
   const label = person === 'yj' ? '영재' : '시온';
+  let prog = `월급 ${w.checkedCount}/${w.total}`;
+  if (w.savings.total > 0) prog += ` · 목돈 ${w.savings.checkedCount}/${w.savings.total}`;
+
   return `<div class="tracker-col ${colorClass}" data-col="${person}">
     <div class="tracker-col-head">
       <h4>${label}</h4>
-      <span class="tracker-col-progress">${w.checkedCount}/${w.total}</span>
+      <span class="tracker-col-progress">${prog}</span>
     </div>
     ${renderWalletBox(person)}
-    <div class="check-list">${rows}</div>
+    <div class="check-section-label">📅 월급에서 (실수령 기준)</div>
+    <div class="check-list">${monthlyRows}</div>
+    ${savingsBlock}
   </div>`;
 }
 
