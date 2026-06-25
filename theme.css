@@ -559,12 +559,12 @@
       width: 10px; height: 10px; border-radius: 3px; display: inline-block;
     }
     .fc-year-row {
-      display: grid; grid-template-columns: 52px 1fr 110px;
+      display: grid; grid-template-columns: 52px 1fr 100px 100px;
       align-items: center; gap: 12px; margin-bottom: 10px;
     }
-    @media (max-width: 500px) {
+    @media (max-width: 700px) {
       .fc-year-row { grid-template-columns: 44px 1fr; }
-      .fc-year-total { grid-column: 2; text-align: left; font-size: .85rem; }
+      .fc-year-plan, .fc-year-total { grid-column: 2; text-align: left; font-size: .78rem; }
     }
     .fc-year-label { font-size: .85rem; font-weight: 700; }
     .fc-bar-track {
@@ -619,6 +619,11 @@
     .forecast-table .ft-year-head {
       text-align: center;
     }
+    .forecast-table .ft-sub-planned,
+    .forecast-table .ft-sub-actual,
+    .forecast-table .ft-sub-pct {
+      text-align: right;
+    }
     .forecast-table .ft-sub-planned { color: var(--amber); }
     .forecast-table .ft-sub-actual { color: var(--green); }
     .forecast-table .ft-sub-pct { color: var(--muted); }
@@ -654,7 +659,7 @@
       white-space: nowrap;
       font-variant-numeric: tabular-nums;
     }
-    .forecast-table th:first-child, .forecast-table td:first-child { text-align: left; }
+    .forecast-table td.ft-item-col { text-align: left; }
     .forecast-table tr.total-row td { font-weight: 800; border-top: 2px solid var(--border); }
     .forecast-table tr.cum-row td { color: var(--green); font-weight: 700; }
     .forecast-note {
@@ -854,11 +859,6 @@
     .fc-cat-pct.mid { color: var(--amber); }
     .fc-cat-pct.low { color: var(--red); }
     .fc-cat-remain { color: var(--muted); }
-    .fc-year-row { grid-template-columns: 52px 1fr 100px 100px; }
-    @media (max-width: 700px) {
-      .fc-year-row { grid-template-columns: 44px 1fr; }
-      .fc-year-plan, .fc-year-total { grid-column: 2; text-align: left; font-size: .78rem; }
-    }
     .fc-year-plan { font-size: .82rem; font-weight: 600; color: var(--amber); text-align: right; }
     .fc-bar-wrap { position: relative; min-width: 0; }
     .fc-bar-planned {
