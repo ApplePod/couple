@@ -1517,12 +1517,11 @@ function renderForecast() {
     </tr>`;
   }).join('');
 
-  const yearColHead = years.map((y) =>
-    `<th colspan="3" class="ft-year-head">${y}년</th>`
-  ).join('');
-  const subColHead = years.map(() =>
-    `<th class="ft-sub-planned">예상</th><th class="ft-sub-actual">실제</th><th class="ft-sub-pct">달성</th>`
-  ).join('');
+  const dataColHead = (groupLabel) =>
+    `<th class="col-planned ft-col-head"><span class="ft-head-group">${groupLabel}</span><span class="ft-head-sub planned">예상</span></th>` +
+    `<th class="col-actual ft-col-head"><span class="ft-head-group">${groupLabel}</span><span class="ft-head-sub actual">실제</span></th>` +
+    `<th class="col-pct ft-col-head"><span class="ft-head-group">${groupLabel}</span><span class="ft-head-sub pct">달성</span></th>`;
+  const colHead = years.map((y) => dataColHead(`${y}년`)).join('') + dataColHead('합계');
 
   const colgroup = `<colgroup>
     <col class="ft-col-item">
@@ -1575,8 +1574,7 @@ function renderForecast() {
       <table class="forecast-table">
         ${colgroup}
         <thead>
-          <tr><th rowspan="2" class="ft-item-head">항목</th>${yearColHead}<th colspan="3" class="ft-year-head">합계</th></tr>
-          <tr>${subColHead}<th class="ft-sub-planned">예상</th><th class="ft-sub-actual">실제</th><th class="ft-sub-pct">달성</th></tr>
+          <tr><th class="ft-item-head">항목</th>${colHead}</tr>
         </thead>
         <tbody>
           ${tableRows}

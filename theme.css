@@ -601,32 +601,35 @@
       font-weight: 600;
       background: var(--surface2);
     }
-    .forecast-table thead tr:first-child th {
-      border-bottom: none;
-      padding-bottom: 4px;
-    }
-    .forecast-table thead tr:last-child th {
-      padding-top: 4px;
-      font-size: .65rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
     .forecast-table .ft-item-head,
     .forecast-table .ft-item-col {
       text-align: left;
       vertical-align: middle;
     }
-    .forecast-table .ft-year-head {
-      text-align: center;
+    .forecast-table .ft-col-head {
+      vertical-align: bottom;
+      padding: 8px 8px 10px;
+      line-height: 1.25;
     }
-    .forecast-table .ft-sub-planned,
-    .forecast-table .ft-sub-actual,
-    .forecast-table .ft-sub-pct {
+    .forecast-table .ft-head-group {
+      display: block;
+      font-size: .62rem;
+      font-weight: 600;
+      color: var(--muted);
       text-align: right;
+      margin-bottom: 3px;
+      letter-spacing: 0.01em;
     }
-    .forecast-table .ft-sub-planned { color: var(--amber); }
-    .forecast-table .ft-sub-actual { color: var(--green); }
-    .forecast-table .ft-sub-pct { color: var(--muted); }
+    .forecast-table .ft-head-sub {
+      display: block;
+      font-size: .68rem;
+      font-weight: 700;
+      text-align: right;
+      letter-spacing: 0.02em;
+    }
+    .forecast-table .ft-head-sub.planned { color: var(--amber); }
+    .forecast-table .ft-head-sub.actual { color: var(--green); }
+    .forecast-table .ft-head-sub.pct { color: var(--muted); }
     .ft-item-name {
       display: flex;
       align-items: center;
@@ -653,11 +656,24 @@
       font-weight: 800;
       font-size: .82rem;
     }
+    .forecast-table th.col-planned,
+    .forecast-table th.col-actual,
+    .forecast-table th.col-pct,
     .forecast-table td.col-planned,
     .forecast-table td.col-actual,
     .forecast-table td.col-pct {
       white-space: nowrap;
       font-variant-numeric: tabular-nums;
+    }
+    .forecast-table th.col-planned + th.col-actual,
+    .forecast-table th.col-actual + th.col-pct,
+    .forecast-table td.col-planned + td.col-actual,
+    .forecast-table td.col-actual + td.col-pct {
+      border-left: none;
+    }
+    .forecast-table th.col-pct + th.col-planned,
+    .forecast-table td.col-pct + td.col-planned {
+      border-left: 1px solid var(--border);
     }
     .forecast-table td.ft-item-col { text-align: left; }
     .forecast-table tr.total-row td { font-weight: 800; border-top: 2px solid var(--border); }
