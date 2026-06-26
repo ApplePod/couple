@@ -2341,8 +2341,12 @@
       gap: 12px;
       margin-bottom: 14px;
     }
-    .pf-charts-4 .pf-chart-body {
-      min-height: 200px;
+    .pf-charts-4 .pf-chart-body-side {
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px 10px;
+      min-height: 0;
     }
     .pf-chart-card {
       background: #fff;
@@ -2407,6 +2411,28 @@
       list-style: none;
       width: 100%;
       max-width: 220px;
+    }
+    .pf-chart-body-side .pf-legend {
+      flex: 1;
+      min-width: 0;
+      max-width: none;
+      align-self: center;
+    }
+    .pf-legend-side .pf-legend-item {
+      grid-template-columns: 8px minmax(0, 1fr) auto auto;
+      gap: 4px 6px;
+      padding: 4px 0;
+    }
+    .pf-legend-side .pf-legend-label {
+      font-size: .66rem;
+    }
+    .pf-legend-side .pf-legend-pct {
+      font-size: .64rem;
+      white-space: nowrap;
+    }
+    .pf-legend-side .pf-legend-amt {
+      font-size: .6rem;
+      white-space: nowrap;
     }
     .pf-legend-item {
       display: grid;
@@ -2512,4 +2538,13 @@
   @media (max-width: 900px) {
     .pf-charts-grid { grid-template-columns: 1fr; }
     .pf-dash-stats { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .pf-chart-body-side {
+      flex-direction: column;
+      align-items: center;
+    }
+    .pf-chart-body-side .pf-legend {
+      width: 100%;
+    }
   }

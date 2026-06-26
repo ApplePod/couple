@@ -318,10 +318,11 @@ export function renderDonut(slices, opts = {}) {
   </div>`;
 }
 
-export function renderLegend(slices) {
+export function renderLegend(slices, opts = {}) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) return "";
-  return `<ul class="pf-legend">
+  const side = opts.side ? " pf-legend-side" : "";
+  return `<ul class="pf-legend${side}">
     ${slices
       .map(
         (s) => `<li class="pf-legend-item">
@@ -482,7 +483,8 @@ export function renderPortfolioDashboard(data, quoteState) {
     },
   ];
 
-  const donutOpts = { size: 152, stroke: 24 };
+  const donutOpts = { size: 132, stroke: 22 };
+  const legendSide = { side: true };
 
   return `<div class="pf-dashboard" data-pf-dashboard>
     <div class="pf-dash-stats">
@@ -498,46 +500,46 @@ export function renderPortfolioDashboard(data, quoteState) {
     <div class="pf-charts-grid pf-charts-4">
       <div class="pf-chart-card">
         <h4 class="pf-chart-title">📂 자산 유형 · 매수</h4>
-        <div class="pf-chart-body">
+        <div class="pf-chart-body pf-chart-body-side">
           ${renderDonut(assetSlices, {
             ...donutOpts,
             centerTitle: "매수 합계",
             centerValue: buyTotal ? fmtWon(buyTotal) : "—",
           })}
-          ${renderLegend(assetSlices)}
+          ${renderLegend(assetSlices, legendSide)}
         </div>
       </div>
       <div class="pf-chart-card">
         <h4 class="pf-chart-title">📊 전체 매수 비중</h4>
-        <div class="pf-chart-body">
+        <div class="pf-chart-body pf-chart-body-side">
           ${renderDonut(totalBuySlices, {
             ...donutOpts,
             centerTitle: "종목",
             centerValue: String(symbolCount || "0"),
           })}
-          ${renderLegend(totalBuySlices)}
+          ${renderLegend(totalBuySlices, legendSide)}
         </div>
       </div>
       <div class="pf-chart-card">
         <h4 class="pf-chart-title">🔵 영재 매수 비중</h4>
-        <div class="pf-chart-body">
+        <div class="pf-chart-body pf-chart-body-side">
           ${renderDonut(yjBuySlices, {
             ...donutOpts,
             centerTitle: "영재",
             centerValue: yjBuyTotal ? fmtWon(yjBuyTotal) : "—",
           })}
-          ${renderLegend(yjBuySlices)}
+          ${renderLegend(yjBuySlices, legendSide)}
         </div>
       </div>
       <div class="pf-chart-card">
         <h4 class="pf-chart-title">🟠 시온 매수 비중</h4>
-        <div class="pf-chart-body">
+        <div class="pf-chart-body pf-chart-body-side">
           ${renderDonut(snBuySlices, {
             ...donutOpts,
             centerTitle: "시온",
             centerValue: snBuyTotal ? fmtWon(snBuyTotal) : "—",
           })}
-          ${renderLegend(snBuySlices)}
+          ${renderLegend(snBuySlices, legendSide)}
         </div>
       </div>
     </div>
