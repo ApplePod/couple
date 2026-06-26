@@ -630,6 +630,7 @@ function renderMonthlyBlock() {
 }
 
 export function refreshPortfolioMonthly() {
+  syncFromDom();
   const section = document.getElementById("portfolio-section");
   const el = section?.querySelector("[data-pf-monthly]");
   if (!el) return;

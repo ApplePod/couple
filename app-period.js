@@ -5,7 +5,11 @@ export const MONTH_LABELS = [
   "7월", "8월", "9월", "10월", "11월", "12월",
 ];
 
-let state = { year: TRACKER_YEARS[0], month: "7" };
+let state = (() => {
+  const now = new Date();
+  const year = TRACKER_YEARS.includes(now.getFullYear()) ? now.getFullYear() : TRACKER_YEARS[0];
+  return { year, month: String(now.getMonth() + 1) };
+})();
 const listeners = new Set();
 
 export function getPeriod() {

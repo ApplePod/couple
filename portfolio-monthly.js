@@ -228,7 +228,7 @@ export function renderPortfolioMonthlySection(data, period, quoteState, budgetCt
   const timeline =
     inMonth.length > 0
       ? `<div class="pf-mt-list">${inMonth.map(renderTradeRow).join("")}</div>`
-      : `<p class="pf-month-empty">이 달 거래일이 있는 매매 내역이 없습니다.</p>`;
+      : `<p class="pf-month-empty">이 달 거래일이 있는 매매가 없습니다.<br>상단 포트폴리오에 입력했는지, 년·월 탭이 맞는지 확인하세요.</p>`;
 
   const undatedBlock =
     undated.length > 0
@@ -241,7 +241,7 @@ export function renderPortfolioMonthlySection(data, period, quoteState, budgetCt
   return `<section class="pf-monthly" data-pf-monthly>
     <div class="pf-monthly-head">
       <h3>📅 월별 매매 정리</h3>
-      <p class="pf-monthly-desc">체크리스트와 같은 년·월 · 거래일 기준 · 미국 주식은 환율로 원화 환산</p>
+      <p class="pf-monthly-desc">상단 포트폴리오에 입력한 매매 내역 · 거래일 기준 자동 정리 · 미국 주식은 환율로 원화 환산</p>
     </div>
     ${renderPeriodTabs(year, month)}
     <div class="pf-month-title">${year}년 ${month}월</div>
