@@ -241,10 +241,28 @@ export function searchKrSymbols(query, limit = MAX_RESULTS) {
   return scored.slice(0, limit).map((x) => x.s);
 }
 
+function usTickerCandidate(query) {
+  const raw = normQ(query);
+  const upper = raw.toUpperCase();
+  if (!/^[A-Z][A-Z0-9.]{0,9}$/.test(upper)) return null;
+  if (/^\d+$/.test(upper)) return null;
+  return { code: upper, name: upper, market: "US", abbr: upper };
+}
+
+/** 국내 + 미국 티커 (영문 1~10자) */
+export function searchSymbols(query, limit = MAX_RESULTS) {
+  const kr = searchKrSymbols(query, limit);
+  const us = usTickerCandidate(query);
+  if (!us) return kr;
+  if (kr.some((s) => s.code === us.code)) return kr;
+  return [us, ...kr].slice(0, limit);
+}
+
 function marketLabel(m) {
   if (m === "KOSPI") return "코스피";
   if (m === "KOSDAQ") return "코스닥";
   if (m === "ETF") return "ETF";
+  if (m === "US") return "미국";
   return m || "";
 }
 
@@ -285,7 +303,7 @@ function openList(wrap, query) {
   const input = wrap.querySelector(".dl-symbol");
   const list = wrap.querySelector(".symbol-ac-list");
   if (!input || !list) return;
-  const items = searchKrSymbols(query);
+  const items = searchSymbols(query);
   wrap._acItems = items;
   renderList(list, items);
   input.setAttribute("aria-expanded", items.length ? "true" : "false");

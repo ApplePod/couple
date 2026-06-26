@@ -13,7 +13,16 @@ import {
   renderPortfolioDashboard,
   updatePortfolioCharts,
 } from "./portfolio-charts.js";
-import { calcPosition } from "./portfolio-calc.js";
+import { calcPosition, isUsMarket, positionCurrency } from "./portfolio-calc.js";
+import {
+  startPortfolioQuotes,
+  getQuoteState,
+  quoteOptsForPosition,
+  formatFxRate,
+  formatQuoteTime,
+  formatReturnPct,
+  requestQuoteRefresh,
+} from "./portfolio-quotes.js";
 
 export const BROKERS = [
   "한국투자증권",
@@ -81,24 +90,105 @@ function calcLots(lots) {
   return calcPosition(lots, []);
 }
 
+function statsForPosition(pos) {
+  return calcPosition(pos.lots, pos.sells, quoteOptsForPosition(pos));
+}
+
 function calcPersonSummary(positions) {
   let positionCount = 0;
   let totalCost = 0;
+  let totalMarket = 0;
+  let totalUnrealized = 0;
   let totalShares = 0;
   let totalRealized = 0;
+  let hasQuotes = false;
   for (const pos of positions || []) {
-    const s = calcPosition(pos.lots, pos.sells);
+    const s = statsForPosition(pos);
     const hasData =
       pos.symbol?.trim() ||
       (pos.lots || []).some((l) => l.price || l.shares) ||
       (pos.sells || []).some((l) => l.price || l.shares);
     if (!hasData) continue;
     positionCount++;
-    totalCost += s.remainingCost;
+    totalCost += s.remainingCostKrw ?? s.remainingCost;
     totalShares += Math.max(0, s.heldShares);
-    totalRealized += s.realizedPnl;
+    totalRealized += s.realizedPnlKrw ?? s.realizedPnl;
+    if (s.marketValueKrw != null) {
+      hasQuotes = true;
+      totalMarket += s.marketValueKrw;
+      totalUnrealized += s.unrealizedPnlKrw || 0;
+    }
   }
-  return { positionCount, totalCost, totalShares, totalRealized };
+  return {
+    positionCount,
+    totalCost,
+    totalMarket: hasQuotes ? totalMarket : null,
+    totalUnrealized: hasQuotes ? totalUnrealized : null,
+    totalShares,
+    totalRealized,
+  };
+}
+
+function fmtPrice(n, currency) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  if (currency === "USD") {
+    return `$${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return fmtWon(n);
+}
+
+function renderPositionHeadStats(pos, stats) {
+  const pnlClass =
+    stats.unrealizedPnlKrw > 0 ? "gain" : stats.unrealizedPnlKrw < 0 ? "loss" : "";
+  const realizedClass = stats.realizedPnlKrw > 0 ? "gain" : stats.realizedPnlKrw < 0 ? "loss" : "";
+  const parts = [
+    `<span><em>평단</em>${stats.avgPrice ? fmtPrice(stats.avgPrice, stats.currency) : "—"}</span>`,
+    `<span><em>보유</em>${stats.heldShares > 0 ? stats.heldShares.toLocaleString("ko-KR") : stats.buyShares ? "0" : "—"}</span>`,
+    `<span><em>잔여원금</em>${stats.remainingCostKrw ? fmtWon(stats.remainingCostKrw) : stats.remainingCost ? fmtWon(stats.remainingCost) : "—"}</span>`,
+  ];
+  if (stats.currentPrice != null && stats.heldShares > 0) {
+    parts.push(`<span class="pf-live"><em>현재가</em>${fmtPrice(stats.currentPrice, stats.currency)}</span>`);
+  }
+  if (stats.unrealizedPnlKrw != null && stats.heldShares > 0) {
+    const pct = formatReturnPct(stats.returnPct);
+    parts.push(
+      `<span class="pf-pnl ${pnlClass}"><em>평가</em>${pct ? `${pct} ` : ""}${formatPnl(stats.unrealizedPnlKrw)}</span>`
+    );
+  }
+  if (stats.realizedPnlKrw) {
+    parts.push(
+      `<span class="pf-pnl ${realizedClass}"><em>실현</em>${formatPnl(stats.realizedPnlKrw)}</span>`
+    );
+  }
+  return parts.join("");
+}
+
+function renderColSummary(summary) {
+  return `<span>종목 <strong>${summary.positionCount}</strong></span>
+        <span>잔여원금 <strong>${summary.totalCost ? fmtWon(summary.totalCost) : "—"}</strong></span>
+        ${summary.totalMarket != null ? `<span>평가금액 <strong>${fmtWon(summary.totalMarket)}</strong></span>` : ""}
+        ${summary.totalUnrealized != null && summary.totalUnrealized !== 0 ? `<span>평가손익 <strong class="${summary.totalUnrealized > 0 ? "gain" : "loss"}">${formatPnl(summary.totalUnrealized)}</strong></span>` : ""}
+        ${summary.totalRealized ? `<span>실현손익 <strong class="${summary.totalRealized > 0 ? "gain" : "loss"}">${formatPnl(summary.totalRealized)}</strong></span>` : ""}`;
+}
+
+function renderQuoteBar() {
+  const qs = getQuoteState();
+  const cls = qs.status === "error" ? "error" : qs.status === "loading" ? "loading" : "ok";
+  const fx = qs.fxRate ? `USD/KRW ${formatFxRate(qs.fxRate)}` : "환율 —";
+  const time = qs.updatedAt ? `갱신 ${formatQuoteTime(qs.updatedAt)}` : "";
+  let msg = "";
+  if (qs.status === "error") {
+    msg = qs.error?.includes("404") || qs.error?.includes("Failed")
+      ? "시세 함수 미배포 — supabase functions deploy portfolio-quotes"
+      : qs.error || "시세 조회 실패";
+  } else if (qs.status === "loading" && !qs.updatedAt) {
+    msg = "시세 불러오는 중…";
+  }
+  return `<div class="pf-quote-bar ${cls}" data-pf-quote-bar>
+    <span class="pf-quote-fx">💱 ${fx}</span>
+    ${time ? `<span class="pf-quote-time">${time}</span>` : ""}
+    ${msg ? `<span class="pf-quote-msg">${esc(msg)}</span>` : ""}
+  </div>`;
 }
 
 
@@ -221,7 +311,7 @@ function formatPnl(n) {
 }
 
 function renderPosition(person, pos, renderSymbolInput) {
-  const stats = calcPosition(pos.lots, pos.sells);
+  const stats = statsForPosition(pos);
   const open = expandedIds.has(pos.id);
   if (!(pos.lots || []).length && !(pos.sells || []).length) {
     pos.lots = [{ id: uid("lot"), broker: BROKERS[0], date: "", price: "", shares: "" }];
@@ -230,7 +320,9 @@ function renderPosition(person, pos, renderSymbolInput) {
   const meta = pos.code
     ? `<span class="pf-code">${esc(pos.code)}</span><span class="pf-market">${esc(pos.market || "")}</span>`
     : "";
-  const pnlClass = stats.realizedPnl > 0 ? "gain" : stats.realizedPnl < 0 ? "loss" : "";
+  const usHint = isUsMarket(pos.market)
+    ? `<span class="pf-us-hint">USD 매매 · 원화 환산</span>`
+    : "";
 
   return `<div class="pf-position${open ? " is-open" : ""}" data-person="${person}" data-pos-id="${esc(pos.id)}">
     <button type="button" class="pf-pos-head" aria-expanded="${open}">
@@ -239,10 +331,7 @@ function renderPosition(person, pos, renderSymbolInput) {
         ${meta}
       </div>
       <div class="pf-pos-head-stats">
-        <span><em>평단</em>${stats.avgPrice ? fmtWon(stats.avgPrice) : "—"}</span>
-        <span><em>보유</em>${stats.heldShares > 0 ? stats.heldShares.toLocaleString("ko-KR") : stats.buyShares ? "0" : "—"}</span>
-        <span><em>잔여원금</em>${stats.remainingCost ? fmtWon(stats.remainingCost) : "—"}</span>
-        ${stats.realizedPnl ? `<span class="pf-pnl ${pnlClass}"><em>실현</em>${formatPnl(stats.realizedPnl)}</span>` : ""}
+        ${renderPositionHeadStats(pos, stats)}
       </div>
       <span class="pf-chevron" aria-hidden="true"></span>
     </button>
@@ -253,6 +342,7 @@ function renderPosition(person, pos, renderSymbolInput) {
         ${renderSymbolInput(pos.symbol)}
         <input type="hidden" class="pf-code-inp" value="${esc(pos.code || "")}">
         <input type="hidden" class="pf-market-inp" value="${esc(pos.market || "")}">
+        ${usHint}
       </div>
       ${`<p class="pf-warn"${stats.overSold ? "" : " hidden"}>매도 수량이 매수 합계를 초과했습니다.</p>`}
       <div class="pf-trade-list">
@@ -283,9 +373,7 @@ function renderPersonColumn(person, label, colorClass, data, renderSymbolInput) 
         <button type="button" class="pf-edit-btn tracker-edit-btn" data-person="${person}">${editing ? "완료" : "편집"}</button>
       </div>
       <div class="pf-col-summary">
-        <span>종목 <strong>${summary.positionCount}</strong></span>
-        <span>잔여원금 <strong>${summary.totalCost ? fmtWon(summary.totalCost) : "—"}</strong></span>
-        ${summary.totalRealized ? `<span>실현손익 <strong class="${summary.totalRealized > 0 ? "gain" : "loss"}">${formatPnl(summary.totalRealized)}</strong></span>` : ""}
+        ${renderColSummary(summary)}
       </div>
     </div>
     <div class="pf-positions">${positions || '<p class="pf-empty">등록된 종목이 없습니다.</p>'}</div>
@@ -366,20 +454,13 @@ function syncFromDom() {
 
 function updatePositionHead(posEl) {
   const { pos } = readPositionFromDom(posEl);
-  const stats = calcPosition(pos.lots, pos.sells);
+  const stats = calcPosition(pos.lots, pos.sells, quoteOptsForPosition(pos));
   const head = posEl.querySelector(".pf-pos-head");
   if (!head) return;
   const symEl = head.querySelector(".pf-pos-symbol");
   if (symEl) symEl.textContent = pos.symbol || "종목 미입력";
-  const pnlClass = stats.realizedPnl > 0 ? "gain" : stats.realizedPnl < 0 ? "loss" : "";
   const statsEl = head.querySelector(".pf-pos-head-stats");
-  if (statsEl) {
-    statsEl.innerHTML = `
-      <span><em>평단</em>${stats.avgPrice ? fmtWon(stats.avgPrice) : "—"}</span>
-      <span><em>보유</em>${stats.heldShares > 0 ? stats.heldShares.toLocaleString("ko-KR") : stats.buyShares ? "0" : "—"}</span>
-      <span><em>잔여원금</em>${stats.remainingCost ? fmtWon(stats.remainingCost) : "—"}</span>
-      ${stats.realizedPnl ? `<span class="pf-pnl ${pnlClass}"><em>실현</em>${formatPnl(stats.realizedPnl)}</span>` : ""}`;
-  }
+  if (statsEl) statsEl.innerHTML = renderPositionHeadStats(pos, stats);
   const warn = posEl.querySelector(".pf-warn");
   if (warn) warn.hidden = !stats.overSold;
   const codeInp = posEl.querySelector(".pf-code-inp");
@@ -413,12 +494,27 @@ function refreshSummaries() {
   for (const person of ["yj", "sn"]) {
     const col = section.querySelector(`.pf-col.${person}`);
     if (!col) continue;
-    const s = calcPersonSummary(portfolioData[person]?.positions);
-    const strongs = col.querySelectorAll(".pf-col-summary strong");
-    if (strongs[0]) strongs[0].textContent = String(s.positionCount);
-    if (strongs[1]) strongs[1].textContent = s.totalCost ? fmtWon(s.totalCost) : "—";
+    const summaryEl = col.querySelector(".pf-col-summary");
+    if (summaryEl) {
+      summaryEl.innerHTML = renderColSummary(calcPersonSummary(portfolioData[person]?.positions));
+    }
   }
-  updatePortfolioCharts(section, portfolioData);
+  updatePortfolioCharts(section, portfolioData, getQuoteState());
+}
+
+function refreshQuoteUI() {
+  const section = document.getElementById("portfolio-section");
+  if (!section) return;
+  const bar = section.querySelector("[data-pf-quote-bar]");
+  if (bar) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = renderQuoteBar();
+    bar.replaceWith(tmp.firstElementChild);
+  }
+  for (const posEl of section.querySelectorAll(".pf-position")) {
+    updatePositionHead(posEl);
+  }
+  refreshSummaries();
 }
 
 export function renderPortfolioPage(renderSymbolInput) {
@@ -436,7 +532,8 @@ export function renderPortfolioPage(renderSymbolInput) {
       <h2>💼 투자 포트폴리오</h2>
       ${syncStatus}
     </div>
-    ${renderPortfolioDashboard(portfolioData)}
+    ${renderQuoteBar()}
+    ${renderPortfolioDashboard(portfolioData, getQuoteState())}
     <div class="pf-dual">
       ${renderPersonColumn("yj", "영재", "yj", portfolioData.yj, renderSymbolInput)}
       ${renderPersonColumn("sn", "시온", "sn", portfolioData.sn, renderSymbolInput)}
@@ -592,6 +689,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
         syncFromDom();
         updatePositionHead(posEl);
         refreshSummaries();
+        requestQuoteRefresh();
       }, 200);
     }
   });
@@ -624,6 +722,7 @@ export function initPortfolioModule(renderSymbolInput, storeMode) {
   portfolioData = loadPortfolio();
   lastCloudJson = pfJson(portfolioData);
   renderPortfolioPage(renderSymbolInput);
+  startPortfolioQuotes(() => portfolioData, refreshQuoteUI);
 }
 
 export function setPortfolioFromRemote(remote, meta = {}) {

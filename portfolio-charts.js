@@ -1,6 +1,7 @@
 /** 포트폴리오 시각화 — 도넛·비중·증권사 */
 
 import { calcPosition } from "./portfolio-calc.js";
+import { quoteOptsForPosition } from "./portfolio-quotes.js";
 
 const PERSON_COLORS = { yj: "#5a8fc9", sn: "#f98f75" };
 const YJ_TINTS = ["#5a8fc9", "#6e9ed4", "#88b1de", "#a4c5e8", "#c2d9f2"];
@@ -30,7 +31,11 @@ function fmtPct(n) {
 }
 
 function positionStats(pos) {
-  return calcPosition(pos.lots, pos.sells);
+  return calcPosition(pos.lots, pos.sells, quoteOptsForPosition(pos));
+}
+
+function positionSliceValue(stats) {
+  return stats.marketValueKrw ?? stats.remainingCostKrw ?? stats.remainingCost;
 }
 
 /** @returns {{ label, value, meta? }[]} */
@@ -38,14 +43,16 @@ export function getPositionSlices(positions, max = 8) {
   const items = [];
   for (const pos of positions || []) {
     const stats = positionStats(pos);
-    if (stats.remainingCost <= 0) continue;
+    const value = positionSliceValue(stats);
+    if (value <= 0) continue;
     const label = pos.symbol?.trim() || pos.code || "미입력";
     items.push({
       label,
-      value: stats.remainingCost,
+      value,
       code: pos.code,
       shares: stats.heldShares,
       avgPrice: stats.avgPrice,
+      marketValue: stats.marketValueKrw,
     });
   }
   items.sort((a, b) => b.value - a.value);
@@ -64,7 +71,7 @@ export function getPersonSlices(data) {
 function sumPositions(positions) {
   let t = 0;
   for (const pos of positions || []) {
-    t += positionStats(pos).remainingCost;
+    t += positionSliceValue(positionStats(pos));
   }
   return t;
 }
@@ -75,7 +82,8 @@ export function getHouseholdSymbolSlices(data, max = 10) {
   for (const person of ["yj", "sn"]) {
     for (const pos of data[person]?.positions || []) {
       const stats = positionStats(pos);
-      if (stats.remainingCost <= 0) continue;
+      const value = positionSliceValue(stats);
+      if (value <= 0) continue;
       const key = pos.code || pos.symbol?.trim() || pos.id;
       const cur = map.get(key) || {
         label: pos.symbol?.trim() || pos.code || "미입력",
@@ -85,10 +93,10 @@ export function getHouseholdSymbolSlices(data, max = 10) {
         yjCost: 0,
         snCost: 0,
       };
-      cur.value += stats.remainingCost;
+      cur.value += value;
       cur.shares += Math.max(0, stats.heldShares);
-      if (person === "yj") cur.yjCost += stats.remainingCost;
-      else cur.snCost += stats.remainingCost;
+      if (person === "yj") cur.yjCost += value;
+      else cur.snCost += value;
       map.set(key, cur);
     }
   }
@@ -225,7 +233,7 @@ export function renderAllocationTable(rows, opts = {}) {
           <th>종목</th>
           ${showWho ? "<th>보유</th>" : ""}
           <th>비중</th>
-          <th>투자원금</th>
+          <th>${opts.hasQuotes ? "평가금액" : "투자원금"}</th>
           <th>수량</th>
           <th>평단</th>
         </tr>
@@ -286,29 +294,76 @@ function countHouseholdSymbols(data) {
   return keys.size;
 }
 
-export function renderPortfolioDashboard(data) {
+export function renderPortfolioDashboard(data, quoteState) {
   const personSlices = getPersonSlices(data);
   const symbolSlices = getHouseholdSymbolSlices(data);
   const brokerSlices = getBrokerSlices(data);
   const hTotal = personSlices.reduce((s, x) => s + x.value, 0);
   const topSymbol = symbolSlices[0];
   const symbolCount = countHouseholdSymbols(data);
+  const hasQuotes = quoteState?.status === "ok" && quoteState?.quotes?.size > 0;
+
+  let totalCost = 0;
+  let totalMarket = 0;
+  let totalUnrealized = 0;
+  for (const person of ["yj", "sn"]) {
+    for (const pos of data[person]?.positions || []) {
+      const s = positionStats(pos);
+      if (s.heldShares <= 0) continue;
+      totalCost += s.remainingCostKrw ?? s.remainingCost;
+      if (s.marketValueKrw != null) {
+        totalMarket += s.marketValueKrw;
+        totalUnrealized += s.unrealizedPnlKrw || 0;
+      }
+    }
+  }
 
   const stats = [
-    { lbl: "총 투자원금", val: hTotal ? fmtWon(hTotal) : "—", hi: true },
-    { lbl: "보유 종목", val: symbolCount ? String(symbolCount) : "—" },
     {
-      lbl: "최대 비중",
-      val: topSymbol && hTotal ? `${topSymbol.label} ${fmtPct(topSymbol.value / hTotal)}` : "—",
+      lbl: hasQuotes ? "총 평가금액" : "총 투자원금",
+      val: hasQuotes ? fmtWon(totalMarket) : hTotal ? fmtWon(hTotal) : "—",
+      hi: true,
     },
-    { lbl: "증권사", val: countBrokers(data) ? String(countBrokers(data)) : "—" },
+    {
+      lbl: hasQuotes ? "평가손익" : "보유 종목",
+      val: hasQuotes
+        ? totalUnrealized
+          ? `${totalUnrealized > 0 ? "+" : ""}${Math.round(totalUnrealized).toLocaleString("ko-KR")}원`
+          : "0원"
+        : symbolCount
+          ? String(symbolCount)
+          : "—",
+      hi: hasQuotes && totalUnrealized !== 0,
+      gain: hasQuotes && totalUnrealized > 0,
+      loss: hasQuotes && totalUnrealized < 0,
+    },
+    {
+      lbl: hasQuotes ? "투자원금" : "최대 비중",
+      val: hasQuotes
+        ? totalCost
+          ? fmtWon(totalCost)
+          : "—"
+        : topSymbol && hTotal
+          ? `${topSymbol.label} ${fmtPct(topSymbol.value / hTotal)}`
+          : "—",
+    },
+    {
+      lbl: hasQuotes ? "보유 종목" : "증권사",
+      val: hasQuotes
+        ? symbolCount
+          ? String(symbolCount)
+          : "—"
+        : countBrokers(data)
+          ? String(countBrokers(data))
+          : "—",
+    },
   ];
 
   return `<div class="pf-dashboard" data-pf-dashboard>
     <div class="pf-dash-stats">
       ${stats
         .map(
-          (s) => `<div class="pf-dash-stat${s.hi ? " highlight" : ""}">
+          (s) => `<div class="pf-dash-stat${s.hi ? " highlight" : ""}${s.gain ? " gain" : ""}${s.loss ? " loss" : ""}">
         <div class="pf-dash-stat-val">${s.val}</div>
         <div class="pf-dash-stat-lbl">${s.lbl}</div>
       </div>`
@@ -319,7 +374,10 @@ export function renderPortfolioDashboard(data) {
       <div class="pf-chart-card">
         <h4 class="pf-chart-title">👫 영재 · 시온 비중</h4>
         <div class="pf-chart-body">
-          ${renderDonut(personSlices, { centerTitle: "가구 합계", centerValue: hTotal ? fmtWon(hTotal) : "—" })}
+          ${renderDonut(personSlices, {
+            centerTitle: hasQuotes ? "평가 합계" : "가구 합계",
+            centerValue: hTotal ? fmtWon(hTotal) : "—",
+          })}
           ${renderLegend(personSlices)}
         </div>
       </div>
@@ -345,9 +403,9 @@ export function renderPortfolioDashboard(data) {
     </div>
     <div class="pf-table-section">
       <h4 class="pf-chart-title">종목 상세 · 가구 합산</h4>
-      ${renderAllocationTable(symbolSlices, { showWho: true })}
+      ${renderAllocationTable(symbolSlices, { showWho: true, hasQuotes })}
     </div>
-    <p class="pf-hw-note">잔여원금·평단은 매수−매도 기준(평단법) · 평가금액·수익률은 시세 연동 후 표시</p>
+    <p class="pf-hw-note">잔여원금·평단은 매수−매도(평단법) · 평가금액·손익은 Yahoo 시세+환율(약 1분 갱신) · 미국주는 USD 매매·원화 환산</p>
   </div>`;
 }
 
@@ -381,11 +439,11 @@ export function renderPersonChart(person, label, positions) {
   </div>`;
 }
 
-export function updatePortfolioCharts(section, data) {
+export function updatePortfolioCharts(section, data, quoteState) {
   const dash = section.querySelector("[data-pf-dashboard]");
   if (dash) {
     const tmp = document.createElement("div");
-    tmp.innerHTML = renderPortfolioDashboard(data);
+    tmp.innerHTML = renderPortfolioDashboard(data, quoteState);
     dash.replaceWith(tmp.firstElementChild);
   }
   for (const person of ["yj", "sn"]) {

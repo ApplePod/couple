@@ -1744,6 +1744,34 @@
       color: var(--muted);
     }
     .pf-sync.ok { background: var(--green-dim); color: var(--green); }
+    .pf-quote-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 14px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+      border-radius: var(--radius-sm);
+      background: var(--surface2);
+      font-size: .72rem;
+      color: var(--muted);
+    }
+    .pf-quote-bar.loading { opacity: .85; }
+    .pf-quote-bar.error {
+      background: var(--red-dim);
+      color: var(--red);
+    }
+    .pf-quote-fx { font-weight: 700; color: var(--text); }
+    .pf-quote-time { font-variant-numeric: tabular-nums; }
+    .pf-quote-msg { flex: 1 1 100%; font-size: .68rem; }
+    .pf-live em { color: var(--yj); }
+    .pf-us-hint {
+      font-size: .65rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .pf-dash-stat.gain .pf-dash-stat-val { color: var(--green); }
+    .pf-dash-stat.loss .pf-dash-stat-val { color: var(--red); }
     .pf-household-card {
       background: linear-gradient(135deg, rgba(255,248,245,.9), #fff);
       border: 1px solid rgba(249,143,117,.2);
