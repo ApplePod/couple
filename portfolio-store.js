@@ -19,15 +19,18 @@ function isConfigured() {
   return c && c.url && c.anonKey;
 }
 
-export function defaultPortfolio() {
-  return { yj: { positions: [] }, sn: { positions: [] } };
-}
+import {
+  defaultPortfolio,
+  normalizePortfolio,
+  hasLedgerData,
+} from "./portfolio-data.js";
+
+export { defaultPortfolio };
 
 export function loadPortfolio() {
   try {
     const raw = JSON.parse(localStorage.getItem(LS_KEY) || "null");
-    if (!raw?.yj || !raw?.sn) return defaultPortfolio();
-    return raw;
+    return normalizePortfolio(raw);
   } catch {
     return defaultPortfolio();
   }
@@ -121,7 +124,7 @@ export async function initPortfolioStore(onRemoteChange) {
       const local = loadPortfolio();
       const dirty = isDirty();
 
-      if (dirty && (local.yj?.positions?.length || local.sn?.positions?.length)) {
+      if (dirty && hasLedgerData(local)) {
         persistPortfolioLocal(local);
         clearPortfolioDirty();
         onRemoteChange?.(local, { source: "initial" });
@@ -134,7 +137,7 @@ export async function initPortfolioStore(onRemoteChange) {
       }
     } else {
       const local = loadPortfolio();
-      const hasData = local.yj?.positions?.length || local.sn?.positions?.length;
+      const hasData = hasLedgerData(local);
       if (hasData) {
         onRemoteChange?.(local, { source: "initial" });
         savePortfolioToCloud(local);

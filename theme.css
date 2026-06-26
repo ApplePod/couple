@@ -2490,6 +2490,74 @@
     }
     .pf-month-undated .pf-mt-list { margin-top: 8px; }
 
+    /* 월별 매매 입력 (영재·시온) */
+    .pf-mm-dual {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 4px;
+    }
+    .pf-mm-col {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 10px;
+      background: var(--surface);
+      min-width: 0;
+    }
+    .pf-mm-col-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .pf-mm-col-head h4 {
+      margin: 0;
+      font-size: .92rem;
+      font-weight: 800;
+    }
+    .pf-mm-trade-list {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .pf-mm-trade-head,
+    .pf-mm-trade {
+      display: grid;
+      grid-template-columns: 26px minmax(90px, 1.15fr) 52px 72px 72px 40px minmax(68px, 0.9fr) 20px;
+      column-gap: 8px;
+      row-gap: 6px;
+      align-items: center;
+      min-width: 340px;
+    }
+    .pf-mm-symbol-cell { min-width: 0; }
+    .pf-mm-symbol-cell .symbol-ac-wrap { width: 100%; }
+    .pf-mm-symbol-cell .dl-symbol {
+      width: 100%;
+      font-size: .68rem;
+      padding: 5px 6px;
+    }
+    .pf-mm-us-hint {
+      display: block;
+      font-size: .56rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .pf-mm-empty {
+      margin: 0;
+      padding: 14px 8px;
+      text-align: center;
+      font-size: .74rem;
+      color: var(--muted);
+    }
+    .pf-mm-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .pf-mm-col .pf-row-remove { display: none; }
+    .pf-mm-col.edit-mode .pf-row-remove { display: inline-flex; }
+
     @media (max-width: 700px) {
       .pf-household-grid { grid-template-columns: 1fr; }
       .pf-dual { grid-template-columns: 1fr; }
@@ -2533,6 +2601,7 @@
       .pf-mt-symbol { grid-area: symbol; }
       .pf-mt-tag { grid-area: tag; justify-self: start; }
       .pf-mt-detail { grid-area: detail; }
+      .pf-mm-dual { grid-template-columns: 1fr; }
     }
 
     /* 포트폴리오 대시보드 · 도넛 */

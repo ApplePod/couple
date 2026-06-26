@@ -67,7 +67,7 @@
 import { initSymbolSearch, attachSymbolAutocomplete, renderSymbolInput } from './symbol-search.js';
 import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, fetchRemoteChecks, mergeChecks, markDirty, clearDirty, setLastSyncedChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
 import { initPortfolioStore } from './portfolio-store.js';
-import { initPortfolioModule, setPortfolioFromRemote, refreshPortfolioMonthly } from './portfolio.js';
+import { initPortfolioModule, setPortfolioFromRemote, onPortfolioPeriodChange, refreshPortfolioBudget } from './portfolio.js';
 import { TRACKER_YEARS, MONTH_LABELS, getPeriod, setPeriod, onPeriodChange } from './app-period.js';
 import {
   INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
@@ -828,7 +828,7 @@ function applyRemoteChecks(remote, meta = {}) {
 
   renderTracker();
   renderForecast();
-  refreshPortfolioMonthly();
+  refreshPortfolioBudget();
   if (hasUnsyncedCloudEdits()) scheduleSave();
   else {
     setLastSyncedChecks(remote);
@@ -2133,7 +2133,7 @@ onPeriodChange(() => {
   if (trackerEl?.querySelector('.year-tabs')) {
     renderTracker();
   }
-  refreshPortfolioMonthly();
+  onPortfolioPeriodChange();
 });
 attachSymbolAutocomplete(document.getElementById('tracker-section'));
 renderTracker();
