@@ -1967,6 +1967,38 @@
     .pf-pos-head-stats > span.pf-pnl.gain { background: var(--green-dim); color: var(--green); }
     .pf-pos-head-stats > span.pf-pnl.loss { background: var(--red-dim); color: var(--red); }
     .pf-pos-head-stats > span.pf-live { background: rgba(90,143,201,.08); }
+    .pf-pos-head-stats > span.pf-pnl-eval {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+      padding: 4px 7px;
+      min-width: 4.5em;
+    }
+    .pf-pnl-top {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      line-height: 1.2;
+    }
+    .pf-pnl-top em {
+      display: inline;
+      font-size: .58rem;
+      opacity: .85;
+    }
+    .pf-pnl-pct {
+      font-size: .68rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .pf-pnl-amt {
+      font-size: .62rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+      opacity: .92;
+    }
     .pf-pos-head-stats em {
       font-style: normal;
       display: block;
@@ -2250,6 +2282,7 @@
         flex-wrap: wrap;
       }
       .pf-pos-head-stats > span { text-align: left; }
+      .pf-pos-head-stats > span.pf-pnl-eval { align-items: flex-start; }
       .pf-trade-list {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;

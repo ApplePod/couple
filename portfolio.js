@@ -152,7 +152,10 @@ function renderPositionHeadStats(pos, stats) {
   if (stats.unrealizedPnlKrw != null && stats.heldShares > 0) {
     const pct = formatReturnPct(stats.returnPct);
     parts.push(
-      `<span class="pf-pnl ${pnlClass}"><em>평가</em>${pct ? `${pct} ` : ""}${formatPnl(stats.unrealizedPnlKrw)}</span>`
+      `<span class="pf-pnl pf-pnl-eval ${pnlClass}">
+        <span class="pf-pnl-top"><em>평가</em>${pct ? `<b class="pf-pnl-pct">${pct}</b>` : ""}</span>
+        <span class="pf-pnl-amt">${formatPnl(stats.unrealizedPnlKrw)}</span>
+      </span>`
     );
   }
   if (stats.realizedPnlKrw) {
