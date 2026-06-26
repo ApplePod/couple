@@ -2,10 +2,36 @@
  * Supabase + localStorage 예산 체크 저장
  */
 const LS_KEY = "couple_budget_checks";
+const LS_DIRTY_KEY = "couple_budget_checks_dirty";
 
 let supabase = null;
 let supabaseReady = false;
 let realtimeChannel = null;
+let lastSyncedChecks = null;
+
+export function setLastSyncedChecks(checks) {
+  lastSyncedChecks = checks ? structuredClone(checks) : null;
+}
+
+export function markDirty() {
+  try {
+    localStorage.setItem(LS_DIRTY_KEY, "1");
+  } catch { /* ignore */ }
+}
+
+export function clearDirty() {
+  try {
+    localStorage.removeItem(LS_DIRTY_KEY);
+  } catch { /* ignore */ }
+}
+
+function isDirty() {
+  try {
+    return localStorage.getItem(LS_DIRTY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function isSupabaseConfigured() {
   const c = window.SUPABASE_CONFIG;
@@ -45,22 +71,34 @@ export async function initStore(onRemoteChange) {
     else if (data?.checks) {
       const remote = data.checks;
       const local = loadChecks();
-      const localStr = JSON.stringify(local);
-      const remoteStr = JSON.stringify(remote);
-      if (localStr === remoteStr) {
-        onRemoteChange?.(remote, { source: "initial" });
-      } else if (Object.keys(local).length === 0) {
-        localStorage.setItem(LS_KEY, remoteStr);
-        onRemoteChange?.(remote, { source: "initial" });
-      } else {
+      const dirty = isDirty();
+
+      if (dirty && Object.keys(local).length > 0) {
         const merged = mergeChecks(remote, local, remote);
         const mergedStr = JSON.stringify(merged);
-        console.info("[budget] 로컬·원격 불일치 → 병합");
+        console.info("[budget] 미동기화 로컬 변경 → 병합 후 업로드");
         localStorage.setItem(LS_KEY, mergedStr);
+        clearDirty();
+        setLastSyncedChecks(remote);
         onRemoteChange?.(merged, { source: "initial" });
-        if (mergedStr !== remoteStr) {
-          saveChecks(merged).catch((e) => console.warn("[budget] 병합 동기화:", e));
-        }
+        saveChecksToCloud(merged)
+          .then((res) => {
+            if (res.ok && res.checks) setLastSyncedChecks(res.checks);
+          })
+          .catch((e) => console.warn("[budget] 병합 동기화:", e));
+      } else {
+        const remoteStr = JSON.stringify(remote);
+        localStorage.setItem(LS_KEY, remoteStr);
+        clearDirty();
+        setLastSyncedChecks(remote);
+        onRemoteChange?.(remote, { source: "initial" });
+      }
+    } else {
+      const local = loadChecks();
+      if (Object.keys(local).length > 0) {
+        setLastSyncedChecks(null);
+        onRemoteChange?.(local, { source: "initial" });
+        saveChecks(local).catch((e) => console.warn("[budget] 초기 업로드:", e));
       }
     }
 
@@ -101,20 +139,36 @@ export function persistChecksLocal(checks) {
 }
 
 export async function saveChecksToCloud(checks) {
-  if (!supabaseReady || !supabase) return { ok: true, mode: "local" };
+  if (!supabaseReady || !supabase) return { ok: true, mode: "local", checks };
 
   try {
+    const { data: current, error: fetchErr } = await supabase
+      .from(table())
+      .select("checks")
+      .eq("id", rowId())
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+
+    let toSave = checks;
+    if (current?.checks) {
+      const base = lastSyncedChecks ?? current.checks;
+      toSave = mergeChecks(base, checks, current.checks);
+    }
+
     const { error } = await supabase.from(table()).upsert({
       id: rowId(),
-      checks,
+      checks: toSave,
       updated_at: new Date().toISOString(),
     });
 
     if (error) throw error;
-    return { ok: true, mode: "supabase" };
+    setLastSyncedChecks(toSave);
+    return { ok: true, mode: "supabase", checks: toSave };
   } catch (e) {
     console.warn("[budget] Supabase save:", e);
-    return { ok: false, mode: "local", error: e.message };
+    markDirty();
+    return { ok: false, mode: "local", error: e.message, checks };
   }
 }
 

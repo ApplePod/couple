@@ -59,7 +59,7 @@
 <script src="supabase-config.js"></script>
 <script type="module">
 import { initSymbolSearch, attachSymbolAutocomplete, renderSymbolInput } from './symbol-search.js';
-import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, fetchRemoteChecks, mergeChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
+import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, fetchRemoteChecks, mergeChecks, markDirty, clearDirty, setLastSyncedChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
 import {
   INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
   aggregateActualInvestments, aggregateProjectedInvestments,
@@ -725,14 +725,26 @@ async function flushCloudSave() {
   const res = await saveChecksToCloud(budgetChecks);
   cloudSaveInFlight = false;
   if (res.ok) {
-    if (checksJson(budgetChecks) === snapshot) lastCloudJson = snapshot;
-    else scheduleSave();
+    if (res.checks) {
+      budgetChecks = res.checks;
+      persistChecksLocal(budgetChecks);
+      setLastSyncedChecks(res.checks);
+    }
+    if (checksJson(budgetChecks) === snapshot || res.checks) {
+      lastCloudJson = checksJson(budgetChecks);
+      clearDirty();
+    } else {
+      scheduleSave();
+    }
+  } else {
+    markDirty();
   }
   setSaveStatus(res);
 }
 
 function scheduleSave() {
   persistChecksLocal(budgetChecks);
+  markDirty();
   setSyncStatus('saving', '저장 중…');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => flushCloudSave(), 500);
@@ -749,8 +761,18 @@ async function flushSave() {
 
 function applyRemoteChecks(remote, meta = {}) {
   const remoteJson = checksJson(remote);
+
+  if (meta.source === 'initial') {
+    budgetChecks = remote;
+    lastCloudJson = remoteJson;
+    persistChecksLocal(remote);
+    setLastSyncedChecks(remote);
+    return;
+  }
+
   if (remoteJson === checksJson(budgetChecks)) {
     lastCloudJson = remoteJson;
+    setLastSyncedChecks(remote);
     return;
   }
   if (remoteJson === lastCloudJson && !hasUnsyncedCloudEdits()) return;
@@ -762,6 +784,7 @@ function applyRemoteChecks(remote, meta = {}) {
 
   if (checksJson(merged) === checksJson(budgetChecks)) {
     lastCloudJson = remoteJson;
+    setLastSyncedChecks(remote);
     return;
   }
 
@@ -780,7 +803,10 @@ function applyRemoteChecks(remote, meta = {}) {
   renderTracker();
   renderForecast();
   if (hasUnsyncedCloudEdits()) scheduleSave();
-  else if (storeMode === 'supabase') setSyncStatus('supabase', '동기화됨');
+  else {
+    setLastSyncedChecks(remote);
+    if (storeMode === 'supabase') setSyncStatus('supabase', '동기화됨');
+  }
 }
 
 function startRemotePolling() {
@@ -2095,6 +2121,7 @@ window.addEventListener('beforeunload', () => {
   syncFocusedInputs();
   flushPendingDetailSaves();
   persistChecksLocal(budgetChecks);
+  if (hasUnsyncedCloudEdits()) markDirty();
 });
 
 const store = await initStore(applyRemoteChecks);
