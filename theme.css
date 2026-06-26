@@ -1809,13 +1809,23 @@
       background: var(--sn-glow);
       color: var(--main);
     }
-    .pf-col.yj .ci-date-pill.has-value {
+    .pf-col.yj .ci-date-pill.has-value,
+    .pf-trade-list .pf-trade-buy .ci-date-pill.has-value {
       border-color: rgba(74, 124, 184, 0.35);
       background: linear-gradient(180deg, #fff 0%, var(--yj-glow) 100%);
     }
-    .pf-col.sn .ci-date-pill.has-value {
-      border-color: rgba(249, 143, 117, 0.4);
-      background: linear-gradient(180deg, #fff 0%, var(--sn-glow) 100%);
+    .pf-col.sn .ci-date-pill.has-value,
+    .pf-trade-list .pf-trade-sell .ci-date-pill.has-value {
+      border-color: rgba(224, 82, 82, 0.35);
+      background: linear-gradient(180deg, #fff 0%, var(--red-dim) 100%);
+    }
+    .pf-trade-list .pf-trade-buy .ci-date-pill:hover {
+      border-color: rgba(90, 143, 201, 0.45);
+      box-shadow: 0 2px 6px rgba(90, 143, 201, 0.14);
+    }
+    .pf-trade-list .pf-trade-sell .ci-date-pill:hover {
+      border-color: rgba(224, 82, 82, 0.45);
+      box-shadow: 0 2px 6px rgba(224, 82, 82, 0.12);
     }
     .pf-edit-only { display: none !important; }
     .pf-col.edit-mode .pf-edit-only { display: inline-flex !important; }
