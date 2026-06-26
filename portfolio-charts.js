@@ -305,15 +305,29 @@ export function renderDonut(slices, opts = {}) {
 
   const centerTitle = opts.centerTitle ?? "합계";
   const centerValue = opts.centerValue ?? fmtWon(total);
+  const hideCenter = opts.hideCenter;
 
-  return `<div class="pf-donut" style="--pf-donut-size:${size}px">
+  return `<div class="pf-donut${hideCenter ? " pf-donut-hollow" : ""}" style="--pf-donut-size:${size}px">
     <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(centerTitle)} ${esc(centerValue)}">
       <circle cx="${cx}" cy="${cx}" r="${radius}" fill="none" stroke="var(--surface2)" stroke-width="${stroke}"/>
       ${rings}
     </svg>
-    <div class="pf-donut-center">
+    ${hideCenter ? "" : `<div class="pf-donut-center">
       <span class="pf-donut-center-title">${esc(centerTitle)}</span>
       <span class="pf-donut-center-val">${centerValue}</span>
+    </div>`}
+  </div>`;
+}
+
+function renderChartSplit(slices, donutOpts = {}) {
+  const size = donutOpts.size ?? 120;
+  const stroke = donutOpts.stroke ?? 20;
+  return `<div class="pf-chart-split">
+    <div class="pf-chart-donut-col">
+      ${renderDonut(slices, { size, stroke, hideCenter: true })}
+    </div>
+    <div class="pf-chart-legend-col">
+      ${renderLegend(slices, { compact: true })}
     </div>
   </div>`;
 }
@@ -321,6 +335,19 @@ export function renderDonut(slices, opts = {}) {
 export function renderLegend(slices, opts = {}) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) return "";
+  if (opts.compact) {
+    return `<ul class="pf-legend pf-legend-compact">
+      ${slices
+        .map(
+          (s, i) => `<li class="pf-legend-item${i === 0 ? " is-top" : ""}">
+          <span class="pf-legend-swatch" style="background:${s.color}"></span>
+          <span class="pf-legend-label">${esc(s.label)}</span>
+          <span class="pf-legend-pct">${fmtPct(s.value / total)}</span>
+        </li>`
+        )
+        .join("")}
+    </ul>`;
+  }
   const side = opts.side ? " pf-legend-side" : "";
   return `<ul class="pf-legend${side}">
     ${slices
@@ -483,8 +510,7 @@ export function renderPortfolioDashboard(data, quoteState) {
     },
   ];
 
-  const donutOpts = { size: 132, stroke: 22 };
-  const legendSide = { side: true };
+  const splitOpts = { size: 118, stroke: 19 };
 
   return `<div class="pf-dashboard" data-pf-dashboard>
     <div class="pf-dash-stats">
@@ -499,48 +525,20 @@ export function renderPortfolioDashboard(data, quoteState) {
     </div>
     <div class="pf-charts-grid pf-charts-4">
       <div class="pf-chart-card">
-        <h4 class="pf-chart-title">📂 자산 유형 · 매수</h4>
-        <div class="pf-chart-body pf-chart-body-side">
-          ${renderDonut(assetSlices, {
-            ...donutOpts,
-            centerTitle: "매수 합계",
-            centerValue: buyTotal ? fmtWon(buyTotal) : "—",
-          })}
-          ${renderLegend(assetSlices, legendSide)}
-        </div>
+        <h4 class="pf-chart-title">자산 유형</h4>
+        ${renderChartSplit(assetSlices, splitOpts)}
       </div>
       <div class="pf-chart-card">
-        <h4 class="pf-chart-title">📊 전체 매수 비중</h4>
-        <div class="pf-chart-body pf-chart-body-side">
-          ${renderDonut(totalBuySlices, {
-            ...donutOpts,
-            centerTitle: "종목",
-            centerValue: String(symbolCount || "0"),
-          })}
-          ${renderLegend(totalBuySlices, legendSide)}
-        </div>
+        <h4 class="pf-chart-title">전체 매수 비중</h4>
+        ${renderChartSplit(totalBuySlices, splitOpts)}
       </div>
       <div class="pf-chart-card">
-        <h4 class="pf-chart-title">🔵 영재 매수 비중</h4>
-        <div class="pf-chart-body pf-chart-body-side">
-          ${renderDonut(yjBuySlices, {
-            ...donutOpts,
-            centerTitle: "영재",
-            centerValue: yjBuyTotal ? fmtWon(yjBuyTotal) : "—",
-          })}
-          ${renderLegend(yjBuySlices, legendSide)}
-        </div>
+        <h4 class="pf-chart-title">영재 매수 비중</h4>
+        ${renderChartSplit(yjBuySlices, splitOpts)}
       </div>
       <div class="pf-chart-card">
-        <h4 class="pf-chart-title">🟠 시온 매수 비중</h4>
-        <div class="pf-chart-body pf-chart-body-side">
-          ${renderDonut(snBuySlices, {
-            ...donutOpts,
-            centerTitle: "시온",
-            centerValue: snBuyTotal ? fmtWon(snBuyTotal) : "—",
-          })}
-          ${renderLegend(snBuySlices, legendSide)}
-        </div>
+        <h4 class="pf-chart-title">시온 매수 비중</h4>
+        ${renderChartSplit(snBuySlices, splitOpts)}
       </div>
     </div>
     <div class="pf-table-section">
