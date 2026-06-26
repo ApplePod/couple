@@ -7,17 +7,17 @@ const PERSON_COLORS = { yj: "#5a8fc9", sn: "#f98f75" };
 const YJ_TINTS = ["#5a8fc9", "#6e9ed4", "#88b1de", "#a4c5e8", "#c2d9f2"];
 const SN_TINTS = ["#f98f75", "#faa18a", "#fbb59f", "#fccab5", "#fddfce"];
 const SLICE_COLORS = [
-  "#5a8fc9", "#f98f75", "#22c55e", "#8b5cf6", "#06b6d4",
-  "#f59e0b", "#ec4899", "#6366f1", "#14b8a6", "#a855f7",
-  "#84cc16", "#f97316",
+  "#3b82f6", "#8b5cf6", "#22c55e", "#f59e0b",
+  "#fb923c", "#06b6d4", "#60a5fa", "#a78bfa",
+  "#14b8a6", "#ec4899", "#84cc16", "#f97316",
 ];
-const OTHER_COLOR = "#c4c4c4";
+const OTHER_COLOR = "#d1d5db";
 
 const ASSET_META = {
-  stock: { label: "국내주식", color: "#5a8fc9" },
+  stock: { label: "국내주식", color: "#3b82f6" },
   etf: { label: "ETF", color: "#22c55e" },
-  us: { label: "미국주식", color: "#6366f1" },
-  other: { label: "기타", color: "#c4c4c4" },
+  us: { label: "미국주식", color: "#8b5cf6" },
+  other: { label: "기타", color: "#d1d5db" },
 };
 const ASSET_ORDER = ["stock", "etf", "us", "other"];
 
@@ -257,32 +257,48 @@ function collapseSlices(items, max) {
   ];
 }
 
-function donutSegments(slices, radius) {
+function donutSegments(slices, radius, padDeg = 2.8) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) return { total: 0, segments: [] };
   const circ = 2 * Math.PI * radius;
-  let cumulative = 0;
+  const n = slices.length;
+  const pad = (padDeg / 360) * circ;
+  const avail = Math.max(0, circ - pad * n);
+  let angle = -90;
   const segments = slices.map((sl) => {
     const fraction = sl.value / total;
-    const length = fraction * circ;
-    const rotation = (cumulative / total) * 360 - 90;
-    cumulative += sl.value;
-    return { ...sl, fraction, length, gap: circ - length, rotation };
+    const length = fraction * avail;
+    const rotation = angle;
+    angle += (length / circ) * 360 + padDeg;
+    return { ...sl, fraction, length, dashGap: circ - length, rotation };
   });
   return { total, segments };
+}
+
+function renderSegCircle(s, cx, stroke, extraClass = "") {
+  return `<circle class="pf-donut-seg${extraClass}" cx="${cx}" cy="${cx}" r="${(cx * 2 - stroke) / 2}" fill="none"
+    stroke="${s.color}" stroke-width="${stroke}"
+    stroke-linecap="round"
+    stroke-dasharray="${s.length} ${s.dashGap}"
+    transform="rotate(${s.rotation} ${cx} ${cx})"
+    data-label="${esc(s.label)}" data-pct="${(s.fraction * 100).toFixed(1)}">
+    <title>${esc(s.label)} ${fmtPct(s.fraction)}</title>
+  </circle>`;
 }
 
 export function renderDonut(slices, opts = {}) {
   const size = opts.size ?? 168;
   const stroke = opts.stroke ?? 26;
+  const gapped = opts.gapped !== false && opts.hideCenter;
+  const padDeg = opts.padDeg ?? 2.8;
   const radius = (size - stroke) / 2;
   const cx = size / 2;
-  const { total, segments } = donutSegments(slices, radius);
+  const { total, segments } = donutSegments(slices, radius, gapped ? padDeg : 0);
 
   if (total <= 0) {
     return `<div class="pf-donut pf-donut-empty" style="--pf-donut-size:${size}px">
       <svg viewBox="0 0 ${size} ${size}" aria-hidden="true">
-        <circle cx="${cx}" cy="${cx}" r="${radius}" fill="none" stroke="var(--border)" stroke-width="${stroke}" opacity=".5"/>
+        <circle cx="${cx}" cy="${cx}" r="${radius}" fill="none" stroke="#eef0f3" stroke-width="${stroke}" stroke-linecap="round"/>
       </svg>
       <div class="pf-donut-center">
         <span class="pf-donut-center-sub">${esc(opts.emptyLabel || "데이터 없음")}</span>
@@ -290,17 +306,18 @@ export function renderDonut(slices, opts = {}) {
     </div>`;
   }
 
+  const top = segments[0];
+  const glow =
+    gapped && top
+      ? `<circle class="pf-donut-glow" cx="${cx}" cy="${cx}" r="${radius}" fill="none"
+          stroke="${top.color}" stroke-width="${stroke + 14}" opacity="0.22"
+          stroke-linecap="round"
+          stroke-dasharray="${top.length} ${top.dashGap}"
+          transform="rotate(${top.rotation} ${cx} ${cx})"/>`
+      : "";
+
   const rings = segments
-    .map(
-      (s) =>
-        `<circle class="pf-donut-seg" cx="${cx}" cy="${cx}" r="${radius}" fill="none"
-          stroke="${s.color}" stroke-width="${stroke}"
-          stroke-dasharray="${s.length} ${s.gap}"
-          transform="rotate(${s.rotation} ${cx} ${cx})"
-          data-label="${esc(s.label)}" data-pct="${(s.fraction * 100).toFixed(1)}">
-          <title>${esc(s.label)} ${fmtPct(s.fraction)}</title>
-        </circle>`
-    )
+    .map((s, i) => renderSegCircle(s, cx, stroke, i === 0 ? " is-top" : ""))
     .join("");
 
   const centerTitle = opts.centerTitle ?? "합계";
@@ -309,7 +326,8 @@ export function renderDonut(slices, opts = {}) {
 
   return `<div class="pf-donut${hideCenter ? " pf-donut-hollow" : ""}" style="--pf-donut-size:${size}px">
     <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(centerTitle)} ${esc(centerValue)}">
-      <circle cx="${cx}" cy="${cx}" r="${radius}" fill="none" stroke="var(--surface2)" stroke-width="${stroke}"/>
+      <circle cx="${cx}" cy="${cx}" r="${radius}" fill="none" stroke="#eef0f3" stroke-width="${stroke}" stroke-linecap="round"/>
+      ${glow}
       ${rings}
     </svg>
     ${hideCenter ? "" : `<div class="pf-donut-center">
@@ -320,11 +338,11 @@ export function renderDonut(slices, opts = {}) {
 }
 
 function renderChartSplit(slices, donutOpts = {}) {
-  const size = donutOpts.size ?? 120;
-  const stroke = donutOpts.stroke ?? 20;
+  const size = donutOpts.size ?? 128;
+  const stroke = donutOpts.stroke ?? 22;
   return `<div class="pf-chart-split">
     <div class="pf-chart-donut-col">
-      ${renderDonut(slices, { size, stroke, hideCenter: true })}
+      ${renderDonut(slices, { size, stroke, hideCenter: true, gapped: true })}
     </div>
     <div class="pf-chart-legend-col">
       ${renderLegend(slices, { compact: true })}
@@ -339,7 +357,7 @@ export function renderLegend(slices, opts = {}) {
     return `<ul class="pf-legend pf-legend-compact">
       ${slices
         .map(
-          (s, i) => `<li class="pf-legend-item${i === 0 ? " is-top" : ""}">
+          (s, i) => `<li class="pf-legend-item${i === 0 ? " is-top is-active" : ""}" data-seg-idx="${i}">
           <span class="pf-legend-swatch" style="background:${s.color}"></span>
           <span class="pf-legend-label">${esc(s.label)}</span>
           <span class="pf-legend-pct">${fmtPct(s.value / total)}</span>
@@ -510,7 +528,7 @@ export function renderPortfolioDashboard(data, quoteState) {
     },
   ];
 
-  const splitOpts = { size: 118, stroke: 19 };
+  const splitOpts = { size: 128, stroke: 22 };
 
   return `<div class="pf-dashboard" data-pf-dashboard>
     <div class="pf-dash-stats">
@@ -579,12 +597,39 @@ export function renderPersonChart(person, label, positions) {
   </div>`;
 }
 
+export function attachChartInteractions(root) {
+  if (!root || root._pfChartIx) return;
+  root._pfChartIx = true;
+  root.addEventListener("mouseover", (e) => {
+    const item = e.target.closest(".pf-legend-compact .pf-legend-item");
+    const split = item?.closest(".pf-chart-split");
+    if (!item || !split) return;
+    const idx = Number(item.dataset.segIdx);
+    if (!Number.isFinite(idx)) return;
+    const segs = split.querySelectorAll(".pf-donut-seg");
+    const items = split.querySelectorAll(".pf-legend-item");
+    segs.forEach((s, i) => s.classList.toggle("dim", i !== idx));
+    items.forEach((it, i) => it.classList.toggle("is-active", i === idx));
+  });
+  root.addEventListener("mouseout", (e) => {
+    const split = e.target.closest(".pf-chart-split");
+    if (!split) return;
+    const related = e.relatedTarget;
+    if (related && split.contains(related)) return;
+    split.querySelectorAll(".pf-donut-seg").forEach((s) => s.classList.remove("dim"));
+    split.querySelectorAll(".pf-legend-item").forEach((it, i) => {
+      it.classList.toggle("is-active", i === 0);
+    });
+  });
+}
+
 export function updatePortfolioCharts(section, data, quoteState) {
   const dash = section.querySelector("[data-pf-dashboard]");
   if (dash) {
     const tmp = document.createElement("div");
     tmp.innerHTML = renderPortfolioDashboard(data, quoteState);
     dash.replaceWith(tmp.firstElementChild);
+    attachChartInteractions(section);
   }
   for (const person of ["yj", "sn"]) {
     const el = section.querySelector(`[data-pf-person-chart="${person}"]`);

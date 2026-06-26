@@ -2342,19 +2342,23 @@
       margin-bottom: 14px;
     }
     .pf-charts-4 .pf-chart-card {
-      padding: 14px 14px 12px;
+      padding: 16px 16px 14px;
+      border: none;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, .06);
+      border-radius: 14px;
     }
     .pf-charts-4 .pf-chart-title {
-      font-size: .8rem;
+      font-size: .82rem;
       font-weight: 800;
-      margin-bottom: 12px;
-      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+      letter-spacing: -0.03em;
+      color: #111827;
     }
     .pf-chart-split {
       display: flex;
       align-items: center;
-      gap: 10px 14px;
-      min-height: 118px;
+      gap: 12px 16px;
+      min-height: 128px;
     }
     .pf-chart-donut-col {
       flex: 0 0 auto;
@@ -2377,23 +2381,25 @@
     .pf-legend-compact .pf-legend-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 5px 8px;
-      border-radius: 6px;
+      gap: 10px;
+      padding: 6px 10px;
+      border-radius: 8px;
       border-bottom: none;
-      transition: background .12s ease;
+      transition: background .15s ease, transform .15s ease;
+      cursor: default;
     }
-    .pf-legend-compact .pf-legend-item.is-top {
-      background: rgba(90, 143, 201, .09);
+    .pf-legend-compact .pf-legend-item.is-active {
+      background: rgba(59, 130, 246, .1);
     }
     .pf-legend-compact .pf-legend-item:hover {
-      background: rgba(90, 143, 201, .12);
+      background: rgba(59, 130, 246, .08);
     }
     .pf-legend-swatch {
-      width: 10px;
-      height: 10px;
+      width: 11px;
+      height: 11px;
       border-radius: 3px;
       flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
     }
     .pf-legend-compact .pf-legend-label {
       flex: 1;
@@ -2402,17 +2408,34 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       font-weight: 600;
-      font-size: .74rem;
-      color: var(--text);
+      font-size: .76rem;
+      color: #374151;
+      letter-spacing: -0.01em;
     }
     .pf-legend-compact .pf-legend-pct {
       flex-shrink: 0;
       font-weight: 700;
-      font-size: .72rem;
-      color: var(--text);
+      font-size: .74rem;
+      color: #111827;
       font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
     }
     .pf-donut-hollow .pf-donut-center { display: none; }
+    .pf-donut-hollow svg { overflow: visible; }
+    .pf-donut-glow {
+      pointer-events: none;
+      filter: blur(1px);
+    }
+    .pf-donut-seg {
+      transition: opacity .2s ease, stroke-width .2s ease;
+    }
+    .pf-donut-seg.is-top {
+      filter: drop-shadow(0 0 4px rgba(59, 130, 246, .35));
+    }
+    .pf-donut-seg.dim {
+      opacity: .28;
+    }
+    .pf-donut:hover .pf-donut-seg:not(.dim) { opacity: 1; }
     .pf-chart-card {
       background: #fff;
       border: 1px solid var(--border);
@@ -2443,9 +2466,8 @@
       height: var(--pf-donut-size, 168px);
       flex-shrink: 0;
     }
-    .pf-donut svg { width: 100%; height: 100%; display: block; }
-    .pf-donut-seg { transition: opacity .15s; }
-    .pf-donut:hover .pf-donut-seg { opacity: .85; }
+    .pf-donut svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .pf-donut-seg { transition: opacity .2s ease; }
     .pf-donut-center {
       position: absolute;
       inset: 0;

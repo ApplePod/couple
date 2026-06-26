@@ -12,6 +12,7 @@ import { attachSymbolAutocomplete } from "./symbol-search.js";
 import {
   renderPortfolioDashboard,
   updatePortfolioCharts,
+  attachChartInteractions,
 } from "./portfolio-charts.js";
 import { calcPosition, isUsMarket, positionCurrency } from "./portfolio-calc.js";
 import {
@@ -569,6 +570,7 @@ export function renderPortfolioPage(renderSymbolInput) {
 
   attachPortfolioEvents(section, renderSymbolInput);
   attachSymbolAutocomplete(section);
+  attachChartInteractions(section);
 }
 
 function togglePositionOpen(pos, open) {
