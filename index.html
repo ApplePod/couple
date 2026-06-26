@@ -67,7 +67,8 @@
 import { initSymbolSearch, attachSymbolAutocomplete, renderSymbolInput } from './symbol-search.js';
 import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, fetchRemoteChecks, mergeChecks, markDirty, clearDirty, setLastSyncedChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
 import { initPortfolioStore } from './portfolio-store.js';
-import { initPortfolioModule, setPortfolioFromRemote } from './portfolio.js';
+import { initPortfolioModule, setPortfolioFromRemote, refreshPortfolioMonthly } from './portfolio.js';
+import { TRACKER_YEARS, MONTH_LABELS, getPeriod, setPeriod, onPeriodChange } from './app-period.js';
 import {
   INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
   aggregateActualInvestments, aggregateProjectedInvestments,
@@ -167,10 +168,6 @@ const SN = {
   },
 };
 
-/* 시온 연간 체크 항목 */
-const TRACKER_YEARS = [2026, 2027];
-const MONTH_LABELS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-
 /* 체크리스트 항목 */
 const YJ_CHECK_ITEMS = [
   { id: 'isa', name: 'ISA 목돈', note: '7월 일시불 2천만', amt: 20000000, auto: true, julyOnly: true, forecastOnly: true, detailType: 'invest' },
@@ -204,8 +201,6 @@ const SN_CHECK_ITEMS = [
 ];
 
 let budgetChecks = loadChecks();
-let trackerYear = TRACKER_YEARS[0];
-let trackerMonth = '7';
 let forecastYear = TRACKER_YEARS[0];
 let saveTimer = null;
 let cloudSaveInFlight = false;
@@ -437,6 +432,29 @@ const LIVING_PRESETS = {
 };
 
 const LIVING_DETAIL_EXTRA = ['여행', '주거비', '월세 대출이자', '전기세', '가스료', '수도요금', '인터넷', '윌리엄 할부', '기타'];
+
+function buildPortfolioBudgetContext() {
+  const { year, month } = getPeriod();
+  const defs = [
+    { person: 'yj', id: 'kr', label: '영재 국장', market: 'domestic' },
+    { person: 'sn', id: 'kr', label: '시온 국장', market: 'domestic' },
+    { person: 'sn', id: 'us', label: '시온 미국장', market: 'us' },
+  ];
+  return {
+    year,
+    month,
+    rows: defs
+      .map((d) => {
+        const items = d.person === 'yj' ? YJ_CHECK_ITEMS : SN_CHECK_ITEMS;
+        const item = items.find((i) => i.id === d.id);
+        const plan = item?.amt || 0;
+        const rawActual = getActual(budgetChecks, year, month, d.person, d.id);
+        const checkActual = rawActual !== '' && rawActual != null ? Number(rawActual) : null;
+        return { ...d, plan, checkActual };
+      })
+      .filter((r) => r.plan > 0),
+  };
+}
 
 function defaultLivingBudgetDetail() {
   return {
@@ -696,7 +714,7 @@ function syncFocusedInputs() {
       return;
     }
     budgetChecks = setActual(
-      budgetChecks, trackerYear, trackerMonth,
+      budgetChecks, getPeriod().year, getPeriod().month,
       el.dataset.person, el.dataset.id, parseActualInput(el.value)
     );
     return;
@@ -810,6 +828,7 @@ function applyRemoteChecks(remote, meta = {}) {
 
   renderTracker();
   renderForecast();
+  refreshPortfolioMonthly();
   if (hasUnsyncedCloudEdits()) scheduleSave();
   else {
     setLastSyncedChecks(remote);
@@ -829,8 +848,8 @@ function startRemotePolling() {
 
 function getVisibleItems(person) {
   const items = person === 'yj' ? YJ_CHECK_ITEMS : SN_CHECK_ITEMS;
-  const hidden = new Set(getHiddenItems(budgetChecks, trackerYear, trackerMonth, person));
-  return items.filter(it => !it.forecastOnly && (!it.julyOnly || trackerMonth === '7') && !hidden.has(it.id));
+  const hidden = new Set(getHiddenItems(budgetChecks, getPeriod().year, getPeriod().month, person));
+  return items.filter(it => !it.forecastOnly && (!it.julyOnly || getPeriod().month === '7') && !hidden.has(it.id));
 }
 
 function getMonthlyItems(person) {
@@ -838,11 +857,11 @@ function getMonthlyItems(person) {
 }
 
 function getMonthlyExtraLines(person) {
-  return getMonthlyExtra(budgetChecks, trackerYear, trackerMonth, person);
+  return getMonthlyExtra(budgetChecks, getPeriod().year, getPeriod().month, person);
 }
 
 function persistMonthlyExtra(person, lines) {
-  budgetChecks = setMonthlyExtra(budgetChecks, trackerYear, trackerMonth, person, lines);
+  budgetChecks = setMonthlyExtra(budgetChecks, getPeriod().year, getPeriod().month, person, lines);
   updateWalletSummaries();
   scheduleSave();
 }
@@ -858,11 +877,11 @@ function itemSubLabel(it) {
 }
 
 function getSavingsExtraLines(person) {
-  return getSavingsExtra(budgetChecks, trackerYear, trackerMonth, person);
+  return getSavingsExtra(budgetChecks, getPeriod().year, getPeriod().month, person);
 }
 
 function persistSavingsExtra(person, lines) {
-  budgetChecks = setSavingsExtra(budgetChecks, trackerYear, trackerMonth, person, lines);
+  budgetChecks = setSavingsExtra(budgetChecks, getPeriod().year, getPeriod().month, person, lines);
   updateWalletSummaries();
   scheduleSave();
 }
@@ -893,11 +912,11 @@ function calcPersonWallet(person) {
   let actualSpent = 0;
   let checkedCount = 0;
   for (const it of items) {
-    if (!getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id)) continue;
+    if (!getCheck(budgetChecks, getPeriod().year, getPeriod().month, person, it.id)) continue;
     checkedCount++;
     const plan = itemPlanAmount(person, it);
     plannedChecked += plan;
-    const actual = getActual(budgetChecks, trackerYear, trackerMonth, person, it.id);
+    const actual = getActual(budgetChecks, getPeriod().year, getPeriod().month, person, it.id);
     actualSpent += actual !== null && actual !== '' ? actual : plan;
   }
   for (const ln of monthlyExtra) {
@@ -987,8 +1006,8 @@ function updateWalletSummaries() {
   const yjV = getVisibleItems('yj');
   const snV = getVisibleItems('sn');
   const done =
-    yjV.filter(it => getCheck(budgetChecks, trackerYear, trackerMonth, 'yj', it.id)).length +
-    snV.filter(it => getCheck(budgetChecks, trackerYear, trackerMonth, 'sn', it.id)).length;
+    yjV.filter(it => getCheck(budgetChecks, getPeriod().year, getPeriod().month, 'yj', it.id)).length +
+    snV.filter(it => getCheck(budgetChecks, getPeriod().year, getPeriod().month, 'sn', it.id)).length;
   const all = yjV.length + snV.length;
   const bar = document.getElementById('household-check-bar');
   if (bar) bar.style.width = (all ? done / all * 100 : 0) + '%';
@@ -1039,7 +1058,7 @@ function defaultDetail(it) {
 }
 
 function ensureDetail(person, it) {
-  let d = getDetail(budgetChecks, trackerYear, trackerMonth, person, it.id);
+  let d = getDetail(budgetChecks, getPeriod().year, getPeriod().month, person, it.id);
   if (it.livingBudget) {
     if (!d || d.type !== 'living' || !Array.isArray(d.lines) || !d.lines.length) {
       return defaultLivingBudgetDetail();
@@ -1192,7 +1211,7 @@ function syncDetailToStore(detailsEl) {
   const person = detailsEl.dataset.person;
   const id = detailsEl.dataset.id;
   const detail = readDetailFromWrap(detailsEl);
-  budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
+  budgetChecks = setDetail(budgetChecks, getPeriod().year, getPeriod().month, person, id, detail);
   const total = sumDetailAmount(detail);
   const dtVal = detailsEl.querySelector('.dt-val');
   if (dtVal) dtVal.textContent = fmt(total);
@@ -1224,7 +1243,7 @@ function saveDepositDate(input) {
   } else if (input.dataset.extraId) {
     patchMonthlyLine(person, input.dataset.extraId, { deposit: input.value });
   } else {
-    budgetChecks = setDeposit(budgetChecks, trackerYear, trackerMonth, person, input.dataset.id, input.value);
+    budgetChecks = setDeposit(budgetChecks, getPeriod().year, getPeriod().month, person, input.dataset.id, input.value);
   }
   syncDatePill(input);
   scheduleSave();
@@ -1277,9 +1296,9 @@ function renderRowRemoveBtn(person, attrs, className, title) {
 }
 
 function renderCheckRow(person, it) {
-  const checked = getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id);
-  const actual = getActual(budgetChecks, trackerYear, trackerMonth, person, it.id);
-  const deposit = getDeposit(budgetChecks, trackerYear, trackerMonth, person, it.id);
+  const checked = getCheck(budgetChecks, getPeriod().year, getPeriod().month, person, it.id);
+  const actual = getActual(budgetChecks, getPeriod().year, getPeriod().month, person, it.id);
+  const deposit = getDeposit(budgetChecks, getPeriod().year, getPeriod().month, person, it.id);
   const detailPanel = renderDetailPanel(person, it);
   const hasDetail = !!it.detailType;
   const planAmt = itemPlanAmount(person, it);
@@ -1357,7 +1376,7 @@ function renderCheckColumn(person, items, colorClass) {
 
   const monthlyRows = monthly.map(it => renderCheckRow(person, it)).join('');
   const monthlyExtraRows = monthlyExtra.map(ln => renderMonthlyExtraRow(person, ln)).join('');
-  const hidden = getHiddenItems(budgetChecks, trackerYear, trackerMonth, person);
+  const hidden = getHiddenItems(budgetChecks, getPeriod().year, getPeriod().month, person);
   const hiddenNote = hidden.length
     ? `<button type="button" class="hidden-restore-btn tracker-edit-only" data-person="${person}">숨긴 항목 ${hidden.length}개 되돌리기</button>` : '';
   const editing = trackerEditMode[person];
@@ -1432,7 +1451,7 @@ function attachTrackerEvents() {
       const lines = [...getMonthlyExtraLines(person)];
       const line = { id: 'mex_' + Date.now(), name: '', plan: '', checked: false, actual: '', deposit: '' };
       lines.push(line);
-      budgetChecks = setMonthlyExtra(budgetChecks, trackerYear, trackerMonth, person, lines);
+      budgetChecks = setMonthlyExtra(budgetChecks, getPeriod().year, getPeriod().month, person, lines);
       addMonthlyBtn.previousElementSibling.insertAdjacentHTML('beforeend', renderMonthlyExtraRow(person, line));
       updateWalletSummaries();
       scheduleSave();
@@ -1446,7 +1465,7 @@ function attachTrackerEvents() {
       const lines = [...getSavingsExtraLines(person)];
       const line = { id: 'sav_' + Date.now(), name: '', checked: false, actual: '', deposit: '' };
       lines.push(line);
-      budgetChecks = setSavingsExtra(budgetChecks, trackerYear, trackerMonth, person, lines);
+      budgetChecks = setSavingsExtra(budgetChecks, getPeriod().year, getPeriod().month, person, lines);
       addSavBtn.previousElementSibling.insertAdjacentHTML('beforeend', renderSavingsExtraRow(person, line));
       updateWalletSummaries();
       scheduleSave();
@@ -1458,9 +1477,9 @@ function attachTrackerEvents() {
       e.preventDefault();
       const person = hideBtn.dataset.person;
       const id = hideBtn.dataset.id;
-      const hidden = [...getHiddenItems(budgetChecks, trackerYear, trackerMonth, person)];
+      const hidden = [...getHiddenItems(budgetChecks, getPeriod().year, getPeriod().month, person)];
       if (!hidden.includes(id)) hidden.push(id);
-      budgetChecks = setHiddenItems(budgetChecks, trackerYear, trackerMonth, person, hidden);
+      budgetChecks = setHiddenItems(budgetChecks, getPeriod().year, getPeriod().month, person, hidden);
       renderTracker();
       scheduleSave();
       return;
@@ -1470,7 +1489,7 @@ function attachTrackerEvents() {
     if (restoreBtn) {
       e.preventDefault();
       const person = restoreBtn.dataset.person;
-      budgetChecks = setHiddenItems(budgetChecks, trackerYear, trackerMonth, person, []);
+      budgetChecks = setHiddenItems(budgetChecks, getPeriod().year, getPeriod().month, person, []);
       renderTracker();
       scheduleSave();
       return;
@@ -1514,7 +1533,7 @@ function attachTrackerEvents() {
           note: '',
         };
         detail.lines.push(newLine);
-        budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
+        budgetChecks = setDetail(budgetChecks, getPeriod().year, getPeriod().month, person, id, detail);
         const body = detailsEl.querySelector('.living-budget-body');
         body.insertAdjacentHTML('beforeend', renderLivingBudgetLine(person, newLine, detail.lines.length - 1));
         syncDetailToStore(detailsEl);
@@ -1529,7 +1548,7 @@ function attachTrackerEvents() {
         detail.lines.push({ category: it.livingFixedCat || LIVING_CATS[0].name, amount: '' });
         detailsEl.querySelector('.detail-body').insertAdjacentHTML('beforeend', renderLivingLines([detail.lines.at(-1)], it.livingFixedCat));
       }
-      budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
+      budgetChecks = setDetail(budgetChecks, getPeriod().year, getPeriod().month, person, id, detail);
       scheduleSave();
       return;
     }
@@ -1581,7 +1600,7 @@ function attachTrackerEvents() {
     }
     const cb = e.target.closest('.ci-check');
     if (cb) {
-      budgetChecks = setCheck(budgetChecks, trackerYear, trackerMonth, cb.dataset.person, cb.dataset.id, cb.checked);
+      budgetChecks = setCheck(budgetChecks, getPeriod().year, getPeriod().month, cb.dataset.person, cb.dataset.id, cb.checked);
       cb.closest('.check-item').classList.toggle('done', cb.checked);
       updateWalletSummaries();
       scheduleSave();
@@ -1648,7 +1667,7 @@ function attachTrackerEvents() {
         return;
       }
       const val = parseActualInput(inp.value);
-      budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id, val);
+      budgetChecks = setActual(budgetChecks, getPeriod().year, getPeriod().month, inp.dataset.person, inp.dataset.id, val);
       updateWalletSummaries();
       scheduleSave();
       return;
@@ -1706,7 +1725,7 @@ function attachTrackerEvents() {
         flushSave();
         return;
       }
-      const actual = getActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id);
+      const actual = getActual(budgetChecks, getPeriod().year, getPeriod().month, inp.dataset.person, inp.dataset.id);
       inp.value = formatActualInput(actual);
       flushSave();
       return;
@@ -1748,12 +1767,12 @@ function renderTracker() {
   const hRemain = hIncome - hActual;
 
   const yearBtns = TRACKER_YEARS.map(y =>
-    `<button class="year-tab${y === trackerYear ? ' active' : ''}" data-year="${y}">${y}년</button>`
+    `<button class="year-tab${y === getPeriod().year ? ' active' : ''}" data-year="${y}">${y}년</button>`
   ).join('');
 
   const monthBtns = MONTH_LABELS.map((lbl, i) => {
     const m = String(i + 1);
-    return `<button class="month-tab${m === trackerMonth ? ' active' : ''}" data-month="${m}">${lbl}</button>`;
+    return `<button class="month-tab${m === getPeriod().month ? ' active' : ''}" data-month="${m}">${lbl}</button>`;
   }).join('');
 
   const totalDone = yj.checkedCount + sn.checkedCount;
@@ -1777,7 +1796,7 @@ function renderTracker() {
       <div class="hw-item remain${hRemain < 0 ? ' neg' : ''}"><div class="hl">가구 남는 돈</div><div class="hv" data-hw="remain">${hRemain < 0 ? '−' : ''}${fmt(Math.abs(hRemain))}</div></div>
     </div>
     <div class="tracker-progress">
-      <span>${trackerYear}년 ${trackerMonth}월 · 체크 진행</span>
+      <span>${getPeriod().year}년 ${getPeriod().month}월 · 체크 진행</span>
       <div class="bar"><div class="bar-fill" id="household-check-bar" style="width:${pct}%"></div></div>
       <strong id="household-check-count">${totalDone}/${totalAll}</strong>
     </div>
@@ -1791,8 +1810,8 @@ function renderTracker() {
     const btn = e.target.closest('[data-year]');
     if (!btn) return;
     await flushSave();
-    trackerYear = +btn.dataset.year;
-    forecastYear = trackerYear;
+    setPeriod(+btn.dataset.year, getPeriod().month);
+    forecastYear = getPeriod().year;
     renderTracker();
     attachTrackerEvents();
   };
@@ -1801,7 +1820,7 @@ function renderTracker() {
     const btn = e.target.closest('[data-month]');
     if (!btn) return;
     await flushSave();
-    trackerMonth = btn.dataset.month;
+    setPeriod(getPeriod().year, btn.dataset.month);
     renderTracker();
     attachTrackerEvents();
   };
@@ -2102,7 +2121,20 @@ lastCloudJson = checksJson(budgetChecks);
 startRemotePolling();
 const pfStore = await initPortfolioStore(setPortfolioFromRemote);
 await initSymbolSearch();
-initPortfolioModule(renderSymbolInput, pfStore.mode);
+initPortfolioModule(renderSymbolInput, pfStore.mode, {
+  getPeriod,
+  setPeriod,
+  getBudgetContext: buildPortfolioBudgetContext,
+  onPeriodChange,
+});
+onPeriodChange(() => {
+  forecastYear = getPeriod().year;
+  const trackerEl = document.getElementById('tracker-section');
+  if (trackerEl?.querySelector('.year-tabs')) {
+    renderTracker();
+  }
+  refreshPortfolioMonthly();
+});
 attachSymbolAutocomplete(document.getElementById('tracker-section'));
 renderTracker();
 </script>

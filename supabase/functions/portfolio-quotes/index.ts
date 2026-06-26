@@ -117,11 +117,28 @@ async function fetchKiwoomKrQuote(token: string, code: string): Promise<Quote | 
 
 function toYahoo(code: string, market: string): string {
   const m = String(market || "").toUpperCase();
-  const c = String(code || "").trim();
+  const c = String(code || "").trim().padStart(6, "0");
   if (!c) return "";
   if (isUsMarket(m)) return c.toUpperCase();
   if (m === "KOSDAQ") return `${c}.KQ`;
   return `${c}.KS`;
+}
+
+function yahooKrCandidates(code: string, market: string): string[] {
+  const c = String(code || "").trim().padStart(6, "0");
+  if (!c) return [];
+  const m = String(market || "").toUpperCase();
+  if (m === "KOSDAQ") return [`${c}.KQ`, `${c}.KS`];
+  if (m === "KOSPI" || m === "ETF") return [`${c}.KS`, `${c}.KQ`];
+  return [`${c}.KS`, `${c}.KQ`];
+}
+
+async function fetchYahooKrQuote(code: string, market: string): Promise<Quote | null> {
+  for (const yahoo of yahooKrCandidates(code, market)) {
+    const q = await fetchYahooChart(yahoo);
+    if (q) return q;
+  }
+  return null;
 }
 
 async function fetchYahooChart(yahooSymbol: string): Promise<Quote | null> {
@@ -165,9 +182,13 @@ async function fetchKrQuotes(
       const token = await getKiwoomToken();
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        const q = await fetchKiwoomKrQuote(token, row.code);
+        let q = await fetchKiwoomKrQuote(token, row.code);
+        if (!q) {
+          q = await fetchYahooKrQuote(row.code, row.market);
+          if (q) warnings.push(`${row.code}: 키움 실패 → Yahoo`);
+          else warnings.push(`${row.code}: 시세 없음`);
+        }
         if (q) quotes[row.key] = q;
-        else warnings.push(`${row.code}: 키움 시세 없음`);
         if (i < rows.length - 1) await sleep(KIWOOM_GAP_MS);
       }
       return { provider: "kiwoom", warnings };
@@ -180,10 +201,11 @@ async function fetchKrQuotes(
 
   const yahooRows = rows.map((s) => ({
     key: s.key,
-    yahoo: toYahoo(s.code, s.market),
+    code: s.code,
+    market: s.market,
   }));
   const results = await mapLimit(yahooRows, 4, async (p) => {
-    const q = await fetchYahooChart(p.yahoo);
+    const q = await fetchYahooKrQuote(p.code, p.market);
     return { key: p.key, quote: q };
   });
   for (const row of results) {

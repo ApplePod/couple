@@ -8,7 +8,7 @@ import {
   savePortfolioToCloud,
   defaultPortfolio,
 } from "./portfolio-store.js";
-import { attachSymbolAutocomplete } from "./symbol-search.js";
+import { attachSymbolAutocomplete, lookupSymbol } from "./symbol-search.js";
 import {
   renderPortfolioDashboard,
   updatePortfolioCharts,
@@ -24,6 +24,7 @@ import {
   formatReturnPct,
   requestQuoteRefresh,
 } from "./portfolio-quotes.js";
+import { renderPortfolioMonthlySection } from "./portfolio-monthly.js";
 
 export const BROKERS = [
   "한국투자증권",
@@ -53,12 +54,34 @@ const BROKER_SHORT = {
   기타: "기타",
 };
 
-let portfolioData = loadPortfolio();
+function enrichPositionSymbol(pos) {
+  if (!pos) return pos;
+  const hit = lookupSymbol(pos.symbol, pos.code);
+  if (!hit) return pos;
+  return {
+    ...pos,
+    symbol: pos.symbol || hit.name,
+    code: String(pos.code || "").trim() || hit.code,
+    market: String(pos.market || "").trim() || hit.market,
+  };
+}
+
+function enrichPortfolioData(data) {
+  if (!data?.yj || !data?.sn) return data || defaultPortfolio();
+  for (const person of ["yj", "sn"]) {
+    data[person].positions = (data[person].positions || []).map(enrichPositionSymbol);
+  }
+  return data;
+}
+
+let portfolioData = enrichPortfolioData(loadPortfolio());
 let saveTimer = null;
 let cloudSaveInFlight = false;
 let lastCloudJson = JSON.stringify(portfolioData);
 const expandedIds = new Set();
 const portfolioEditMode = { yj: false, sn: false };
+let periodApi = null;
+let getBudgetContext = null;
 
 function pfJson(d) {
   return JSON.stringify(d);
@@ -78,6 +101,21 @@ function esc(s) {
 function fmtWon(n) {
   if (!n && n !== 0) return "—";
   return `${Math.round(n).toLocaleString("ko-KR")}원`;
+}
+
+function fmtPriceInputValue(n, market) {
+  if (n === "" || n == null) return "";
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "";
+  if (isUsMarket(market)) {
+    return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  }
+  return num.toLocaleString("ko-KR");
+}
+
+function fmtTradeTotal(n, market) {
+  if (!n && n !== 0) return "—";
+  return fmtPrice(n, positionCurrency(market));
 }
 
 function parseNum(str) {
@@ -282,19 +320,34 @@ function mergeTrades(pos) {
   return items;
 }
 
-function renderTradeHead() {
+function renderPriceField(trade, market) {
+  const us = isUsMarket(market);
+  const value = fmtPriceInputValue(trade.price, market);
+  const placeholder = us ? "0.00" : "0";
+  const prefix = us ? `<span class="pf-currency-mark pf-currency-prefix" aria-hidden="true">$</span>` : "";
+  const suffix = us ? "" : `<span class="pf-currency-mark pf-currency-suffix" aria-hidden="true">원</span>`;
+  return `<div class="pf-price-field ${us ? "usd" : "krw"}">
+    ${prefix}
+    <input type="text" class="pf-price" inputmode="decimal" placeholder="${placeholder}" value="${esc(value)}">
+    ${suffix}
+  </div>`;
+}
+
+function renderTradeHead(market = "") {
+  const us = isUsMarket(market);
+  const unit = us ? "$" : "원";
   return `<div class="pf-trade-head">
     <span class="pf-th-tag"></span>
     <span class="pf-th-broker">증권사</span>
     <span class="pf-th-date">거래일</span>
-    <span class="pf-th-price">단가</span>
+    <span class="pf-th-price">단가 <span class="pf-th-unit">(${unit})</span></span>
     <span class="pf-th-shares">수량</span>
-    <span class="pf-th-total">합계</span>
+    <span class="pf-th-total">합계 <span class="pf-th-unit">(${unit})</span></span>
     <span class="pf-trade-act-h"></span>
   </div>`;
 }
 
-function renderTradeRow(person, posId, trade) {
+function renderTradeRow(person, posId, trade, market = "") {
   const isBuy = trade.type === "buy";
   const sh = Number(trade.shares) || 0;
   const pr = Number(trade.price) || 0;
@@ -303,9 +356,9 @@ function renderTradeRow(person, posId, trade) {
     <span class="pf-trade-tag ${isBuy ? "buy" : "sell"}">${isBuy ? "매수" : "매도"}</span>
     <select class="pf-broker">${brokerOptions(trade.broker || BROKERS[0])}</select>
     <div class="pf-trade-date-cell">${renderTradeDatePill(trade.date)}</div>
-    <input type="text" class="pf-price" inputmode="numeric" placeholder="단가" value="${trade.price !== "" && trade.price != null ? Number(trade.price).toLocaleString("ko-KR") : ""}">
+    ${renderPriceField(trade, market)}
     <input type="text" class="pf-shares" inputmode="decimal" placeholder="0" value="${esc(trade.shares ?? "")}">
-    <span class="pf-lot-total">${lineTotal ? fmtWon(lineTotal) : "—"}</span>
+    <span class="pf-lot-total">${lineTotal ? fmtTradeTotal(lineTotal, market) : "—"}</span>
     <button type="button" class="pf-row-remove pf-trade-act" title="내역 삭제" aria-label="삭제">×</button>
   </div>`;
 }
@@ -344,11 +397,9 @@ function renderPosition(person, pos, renderSymbolInput) {
   }
   const trades = mergeTrades(pos);
   const meta = marketBadgeHtml(pos.market);
-  const usHint = isUsMarket(pos.market)
-    ? `<span class="pf-us-hint">달러 매매 · 원화 환산</span>`
-    : "";
+  const usHint = `<span class="pf-us-hint"${isUsMarket(pos.market) ? "" : " hidden"}>달러 매매 · 원화 환산</span>`;
 
-  return `<div class="pf-position${open ? " is-open" : ""}" data-person="${person}" data-pos-id="${esc(pos.id)}">
+  return `<div class="pf-position${open ? " is-open" : ""}" data-person="${person}" data-pos-id="${esc(pos.id)}" data-market="${esc(pos.market || "")}">
     <button type="button" class="pf-pos-head" aria-expanded="${open}">
       <div class="pf-pos-head-left">
         <span class="pf-pos-symbol">${esc(pos.symbol || "종목 미입력")}</span>
@@ -363,15 +414,15 @@ function renderPosition(person, pos, renderSymbolInput) {
       <div class="pf-pos-body-inner">
       <div class="pf-symbol-edit">
         <label>종목</label>
-        ${renderSymbolInput(pos.symbol)}
+        ${renderSymbolInput(pos.symbol, { code: pos.code, market: pos.market })}
         <input type="hidden" class="pf-code-inp" value="${esc(pos.code || "")}">
         <input type="hidden" class="pf-market-inp" value="${esc(pos.market || "")}">
         ${usHint}
       </div>
       ${`<p class="pf-warn"${stats.overSold ? "" : " hidden"}>매도 수량이 매수 합계를 초과했습니다.</p>`}
       <div class="pf-trade-list">
-        ${renderTradeHead()}
-        ${trades.map((t) => renderTradeRow(person, pos.id, t)).join("")}
+        ${renderTradeHead(pos.market)}
+        ${trades.map((t) => renderTradeRow(person, pos.id, t, pos.market)).join("")}
       </div>
       <div class="pf-trade-foot">
         <button type="button" class="pf-add-lot pf-trade-btn buy" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매수 내역</button>
@@ -410,10 +461,11 @@ export function getPortfolioData() {
 }
 
 export function applyRemotePortfolio(remote) {
-  if (pfJson(remote) === pfJson(portfolioData)) return;
-  portfolioData = remote;
-  lastCloudJson = pfJson(remote);
-  persistPortfolioLocal(remote);
+  const enriched = enrichPortfolioData(remote);
+  if (pfJson(enriched) === pfJson(portfolioData)) return;
+  portfolioData = enriched;
+  lastCloudJson = pfJson(enriched);
+  persistPortfolioLocal(enriched);
   renderPortfolioPage(window._portfolioRenderSymbolInput);
 }
 
@@ -453,14 +505,14 @@ function readPositionFromDom(posEl) {
   }
   return {
     person,
-    pos: {
+    pos: enrichPositionSymbol({
       id: posId,
       symbol: symbolInp?.value?.trim() || "",
       code: posEl.querySelector(".pf-code-inp")?.value || symbolInp?.dataset?.symbolCode || "",
       market: posEl.querySelector(".pf-market-inp")?.value || symbolInp?.dataset?.symbolMarket || "",
       lots,
       sells,
-    },
+    }),
   };
 }
 
@@ -477,6 +529,7 @@ function syncFromDom() {
 }
 
 function updatePositionHead(posEl) {
+  const prevMarket = posEl.dataset.market || "";
   const { pos } = readPositionFromDom(posEl);
   const stats = calcPosition(pos.lots, pos.sells, quoteOptsForPosition(pos));
   const head = posEl.querySelector(".pf-pos-head");
@@ -499,24 +552,41 @@ function updatePositionHead(posEl) {
   const symbolInp = posEl.querySelector(".dl-symbol");
   if (codeInp && symbolInp?.dataset.symbolCode) codeInp.value = symbolInp.dataset.symbolCode;
   if (marketInp && symbolInp?.dataset.symbolMarket) marketInp.value = symbolInp.dataset.symbolMarket;
+  const hint = posEl.querySelector(".pf-us-hint");
+  if (hint) hint.hidden = !isUsMarket(pos.market);
+  posEl.dataset.market = pos.market || "";
+  if (prevMarket !== (pos.market || "")) resortTradeTable(posEl);
+}
+
+function marketFromPosEl(posEl) {
+  return (
+    posEl?.querySelector(".pf-market-inp")?.value ||
+    posEl?.dataset.market ||
+    ""
+  );
 }
 
 function updateLotTotal(row) {
   const sh = Number(parseNum(row.querySelector(".pf-shares")?.value)) || 0;
   const pr = Number(parseNum(row.querySelector(".pf-price")?.value)) || 0;
   const cell = row.querySelector(".pf-lot-total");
-  if (cell) cell.textContent = sh > 0 && pr >= 0 ? fmtWon(sh * pr) : "—";
+  const market = marketFromPosEl(row.closest(".pf-position"));
+  if (cell) cell.textContent = sh > 0 && pr >= 0 ? fmtTradeTotal(sh * pr, market) : "—";
 }
 
 function resortTradeTable(posEl) {
   const person = posEl.dataset.person;
   const posId = posEl.dataset.posId;
-  const pos = portfolioData[person]?.positions?.find((p) => p.id === posId);
-  if (!pos) return;
+  const { pos } = readPositionFromDom(posEl);
+  const market = pos.market || marketFromPosEl(posEl);
   const list = posEl.querySelector(".pf-trade-list");
   if (!list) return;
-  const head = list.querySelector(".pf-trade-head");
-  list.innerHTML = (head ? head.outerHTML : renderTradeHead()) + mergeTrades(pos).map((t) => renderTradeRow(person, posId, t)).join("");
+  list.innerHTML =
+    renderTradeHead(market) +
+    mergeTrades(pos).map((t) => renderTradeRow(person, posId, t, market)).join("");
+  for (const inp of list.querySelectorAll(".pf-trade-date-input, .ci-date-input")) {
+    syncTradeDatePill(inp);
+  }
 }
 
 function refreshSummaries() {
@@ -531,6 +601,7 @@ function refreshSummaries() {
     }
   }
   updatePortfolioCharts(section, portfolioData, getQuoteState());
+  refreshPortfolioMonthly();
 }
 
 function refreshQuoteUI() {
@@ -546,6 +617,21 @@ function refreshQuoteUI() {
     updatePositionHead(posEl);
   }
   refreshSummaries();
+}
+
+function renderMonthlyBlock() {
+  const period = periodApi?.getPeriod?.() ?? { year: 2026, month: "7" };
+  const budget = getBudgetContext?.() ?? null;
+  return renderPortfolioMonthlySection(portfolioData, period, getQuoteState(), budget);
+}
+
+export function refreshPortfolioMonthly() {
+  const section = document.getElementById("portfolio-section");
+  const el = section?.querySelector("[data-pf-monthly]");
+  if (!el) return;
+  const next = document.createElement("div");
+  next.innerHTML = renderMonthlyBlock();
+  el.replaceWith(next.firstElementChild);
 }
 
 export function renderPortfolioPage(renderSymbolInput) {
@@ -568,7 +654,8 @@ export function renderPortfolioPage(renderSymbolInput) {
     <div class="pf-dual">
       ${renderPersonColumn("yj", "영재", "yj", portfolioData.yj, renderSymbolInput)}
       ${renderPersonColumn("sn", "시온", "sn", portfolioData.sn, renderSymbolInput)}
-    </div>`;
+    </div>
+    ${renderMonthlyBlock()}`;
 
   attachPortfolioEvents(section, renderSymbolInput);
   attachSymbolAutocomplete(section);
@@ -593,6 +680,17 @@ function attachPortfolioEvents(section, renderSymbolInput) {
   section._pfAttached = true;
 
   section.addEventListener("click", (e) => {
+    const yearBtn = e.target.closest("[data-pf-year]");
+    if (yearBtn && periodApi?.setPeriod) {
+      periodApi.setPeriod(+yearBtn.dataset.pfYear, periodApi.getPeriod().month);
+      return;
+    }
+    const monthBtn = e.target.closest("[data-pf-month]");
+    if (monthBtn && periodApi?.setPeriod) {
+      periodApi.setPeriod(periodApi.getPeriod().year, monthBtn.dataset.pfMonth);
+      return;
+    }
+
     const head = e.target.closest(".pf-pos-head");
     if (head && !e.target.closest(".pf-pos-body")) {
       const pos = head.closest(".pf-position");
@@ -693,7 +791,10 @@ function attachPortfolioEvents(section, renderSymbolInput) {
             pos.sells = [];
           }
           const list = posEl.querySelector(".pf-trade-list");
-          list?.insertAdjacentHTML("beforeend", renderTradeRow(person, posId, { ...lot, type: "buy" }));
+          list?.insertAdjacentHTML(
+            "beforeend",
+            renderTradeRow(person, posId, { ...lot, type: "buy" }, pos?.market || marketFromPosEl(posEl))
+          );
         }
         syncFromDom();
         updatePositionHead(posEl);
@@ -743,15 +844,18 @@ function attachPortfolioEvents(section, renderSymbolInput) {
   section.addEventListener("blur", (e) => {
     const price = e.target.closest(".pf-price");
     if (price) {
+      const market = marketFromPosEl(price.closest(".pf-position"));
       const n = parseNum(price.value);
-      price.value = n !== "" ? Number(n).toLocaleString("ko-KR") : "";
+      price.value = n !== "" ? fmtPriceInputValue(n, market) : "";
     }
   }, true);
 }
 
-export function initPortfolioModule(renderSymbolInput, storeMode) {
+export function initPortfolioModule(renderSymbolInput, storeMode, api = {}) {
   window._portfolioStoreMode = storeMode;
-  portfolioData = loadPortfolio();
+  periodApi = { getPeriod: api.getPeriod, setPeriod: api.setPeriod };
+  getBudgetContext = api.getBudgetContext ?? null;
+  portfolioData = enrichPortfolioData(loadPortfolio());
   lastCloudJson = pfJson(portfolioData);
   renderPortfolioPage(renderSymbolInput);
   startPortfolioQuotes(() => portfolioData, refreshQuoteUI);
@@ -759,7 +863,7 @@ export function initPortfolioModule(renderSymbolInput, storeMode) {
 
 export function setPortfolioFromRemote(remote, meta = {}) {
   if (meta.source === "initial") {
-    portfolioData = remote?.yj ? remote : defaultPortfolio();
+    portfolioData = enrichPortfolioData(remote?.yj ? remote : defaultPortfolio());
     lastCloudJson = pfJson(portfolioData);
     persistPortfolioLocal(portfolioData);
     renderPortfolioPage(window._portfolioRenderSymbolInput);
@@ -770,8 +874,8 @@ export function setPortfolioFromRemote(remote, meta = {}) {
     lastCloudJson = pfJson(remote);
     return;
   }
-  portfolioData = remote;
-  lastCloudJson = pfJson(remote);
-  persistPortfolioLocal(remote);
+  portfolioData = enrichPortfolioData(remote);
+  lastCloudJson = pfJson(portfolioData);
+  persistPortfolioLocal(portfolioData);
   renderPortfolioPage(window._portfolioRenderSymbolInput);
 }

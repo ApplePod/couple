@@ -2085,14 +2085,14 @@
     .pf-trade-head,
     .pf-trade {
       display: grid;
-      grid-template-columns: 28px 54px 78px 68px 44px minmax(92px, 1.15fr);
+      grid-template-columns: 28px 54px 78px 76px 44px minmax(92px, 1.15fr);
       column-gap: 10px;
       row-gap: 6px;
       align-items: center;
     }
     .pf-col.edit-mode .pf-trade-head,
     .pf-col.edit-mode .pf-trade {
-      grid-template-columns: 28px 54px 78px 68px 44px minmax(92px, 1.15fr) 22px;
+      grid-template-columns: 28px 54px 78px 76px 44px minmax(92px, 1.15fr) 22px;
       column-gap: 10px;
     }
     .pf-th-broker,
@@ -2109,6 +2109,10 @@
     .pf-th-price,
     .pf-th-shares,
     .pf-th-total { text-align: right; }
+    .pf-th-unit {
+      font-weight: 600;
+      letter-spacing: 0;
+    }
     .pf-th-total { padding-right: 2px; }
     .pf-col.edit-mode .pf-th-total { padding-right: 0; }
     .pf-trade {
@@ -2150,6 +2154,15 @@
       box-sizing: border-box;
       text-align: left;
     }
+    .pf-trade .pf-price-field {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      justify-self: end;
+      width: 100%;
+      max-width: 76px;
+      min-width: 0;
+    }
     .pf-trade .pf-price {
       width: 100%;
       max-width: 68px;
@@ -2165,6 +2178,21 @@
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
+    .pf-price-field .pf-price {
+      flex: 1;
+      max-width: none;
+    }
+    .pf-price-field.usd .pf-price { padding-left: 4px; }
+    .pf-price-field.krw .pf-price { padding-right: 2px; }
+    .pf-currency-mark {
+      font-size: .62rem;
+      font-weight: 800;
+      color: var(--muted);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .pf-price-field.usd .pf-currency-prefix { color: var(--sn); }
     .pf-trade .pf-shares {
       width: 100%;
       max-width: 44px;
@@ -2291,6 +2319,177 @@
       background: rgba(255,248,245,.6);
     }
     .pf-col.yj .pf-add-pos:hover { border-color: var(--yj); color: var(--yj); }
+
+    /* 포트폴리오 · 월별 매매 정리 */
+    .pf-monthly {
+      margin-top: 28px;
+      padding: 18px 16px 20px;
+      background: linear-gradient(180deg, rgba(255,252,250,.9), #fff);
+      border: 1px solid rgba(249,143,117,.18);
+      border-radius: var(--radius-sm);
+    }
+    .pf-monthly-head h3 {
+      font-size: 1.02rem;
+      font-weight: 800;
+      margin: 0 0 4px;
+    }
+    .pf-monthly-desc {
+      margin: 0 0 14px;
+      font-size: .72rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .pf-period-tabs { margin-bottom: 12px; }
+    .pf-period-tabs .year-tabs,
+    .pf-period-tabs .month-tabs { margin-bottom: 8px; }
+    .pf-period-tabs .month-tabs { margin-bottom: 0; }
+    .pf-month-title {
+      font-size: .88rem;
+      font-weight: 800;
+      color: var(--main);
+      margin: 4px 0 12px;
+    }
+    .pf-month-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .pf-ms-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .pf-ms-card.highlight { border-color: rgba(249,143,117,.35); background: rgba(255,248,245,.65); }
+    .pf-ms-card.gain .pf-ms-val { color: var(--yj); }
+    .pf-ms-card.loss .pf-ms-val { color: var(--red); }
+    .pf-ms-val {
+      font-size: .82rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.3;
+      word-break: keep-all;
+    }
+    .pf-ms-lbl {
+      margin-top: 4px;
+      font-size: .62rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .pf-ms-sub {
+      display: block;
+      font-size: .56rem;
+      font-weight: 600;
+      opacity: .85;
+      margin-top: 2px;
+    }
+    .pf-month-subtitle {
+      font-size: .78rem;
+      font-weight: 800;
+      margin: 0 0 8px;
+      color: var(--text);
+    }
+    .pf-month-sub-hint {
+      font-weight: 600;
+      color: var(--muted);
+      font-size: .66rem;
+    }
+    .pf-month-budget {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+    }
+    .pf-budget-rows { display: flex; flex-direction: column; gap: 8px; }
+    .pf-budget-row {
+      display: grid;
+      grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr));
+      gap: 6px 10px;
+      align-items: center;
+      font-size: .72rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .pf-budget-label { font-weight: 700; }
+    .pf-budget-plan,
+    .pf-budget-buy,
+    .pf-budget-check { color: var(--muted); text-align: right; }
+    .pf-budget-diff {
+      text-align: right;
+      font-weight: 800;
+    }
+    .pf-budget-diff.over { color: var(--red); }
+    .pf-budget-diff.under { color: var(--sn); }
+    .pf-budget-check {
+      grid-column: 2 / -1;
+      text-align: right;
+      font-size: .66rem;
+    }
+    .pf-mt-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .pf-mt-row {
+      display: grid;
+      grid-template-columns: 42px 40px minmax(0, 1fr) 40px auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(0,0,0,.02);
+      font-size: .72rem;
+    }
+    .pf-mt-row.sell { background: rgba(224,82,82,.04); }
+    .pf-mt-row.undated { opacity: .85; }
+    .pf-mt-date { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .pf-mt-person { font-weight: 800; font-size: .66rem; }
+    .pf-mt-person.yj { color: var(--yj); }
+    .pf-mt-person.sn { color: var(--sn); }
+    .pf-mt-symbol {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .pf-mt-tag {
+      font-size: .58rem;
+      font-weight: 800;
+      text-align: center;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .pf-mt-tag.buy { color: var(--yj); background: var(--yj-glow); }
+    .pf-mt-tag.sell { color: var(--red); background: var(--red-dim); }
+    .pf-mt-detail {
+      text-align: right;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .pf-month-empty {
+      margin: 0;
+      padding: 16px 12px;
+      text-align: center;
+      font-size: .76rem;
+      color: var(--muted);
+      background: rgba(0,0,0,.02);
+      border-radius: 8px;
+    }
+    .pf-month-undated {
+      margin-top: 12px;
+      font-size: .72rem;
+    }
+    .pf-month-undated summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 6px 2px;
+    }
+    .pf-month-undated .pf-mt-list { margin-top: 8px; }
+
     @media (max-width: 700px) {
       .pf-household-grid { grid-template-columns: 1fr; }
       .pf-dual { grid-template-columns: 1fr; }
@@ -2315,6 +2514,25 @@
         min-width: 300px;
         column-gap: 8px;
       }
+      .pf-month-summary { grid-template-columns: repeat(2, 1fr); }
+      .pf-budget-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 8px;
+      }
+      .pf-budget-label { grid-column: 1 / -1; }
+      .pf-budget-check { grid-column: 1 / -1; text-align: left; }
+      .pf-mt-row {
+        grid-template-columns: 38px 36px minmax(0, 1fr);
+        grid-template-areas:
+          "date person symbol"
+          "tag detail detail";
+        gap: 4px 8px;
+      }
+      .pf-mt-date { grid-area: date; }
+      .pf-mt-person { grid-area: person; }
+      .pf-mt-symbol { grid-area: symbol; }
+      .pf-mt-tag { grid-area: tag; justify-self: start; }
+      .pf-mt-detail { grid-area: detail; }
     }
 
     /* 포트폴리오 대시보드 · 도넛 */

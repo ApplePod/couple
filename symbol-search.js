@@ -282,6 +282,26 @@ export function searchSymbols(query, limit = MAX_RESULTS) {
   return mergeResults(kr, us, limit);
 }
 
+/** 저장된 이름·코드로 로컬 DB 종목 매칭 (시세 조회용 code 보강) */
+export function lookupSymbol(symbol, code) {
+  const codeKey = compact(code);
+  if (codeKey) {
+    for (const list of [krSymbols, usSymbols]) {
+      const hit = list.find((s) => compact(s.code) === codeKey);
+      if (hit) return hit;
+    }
+  }
+  const nameKey = compact(symbol);
+  if (!nameKey) return null;
+  for (const list of [krSymbols, usSymbols]) {
+    const hit = list.find(
+      (s) => compact(s.name) === nameKey || compact(s.abbr) === nameKey || compact(s.code) === nameKey
+    );
+    if (hit) return hit;
+  }
+  return null;
+}
+
 function marketLabel(s) {
   if (s.market === "US") {
     const kind = s.etf ? "ETF" : "주식";
@@ -430,12 +450,16 @@ export function attachSymbolAutocomplete(section) {
   });
 }
 
-export function renderSymbolInput(value) {
+export function renderSymbolInput(value, meta = {}) {
   const v = String(value ?? "");
+  const attrs = [];
+  if (meta.code) attrs.push(`data-symbol-code="${esc(meta.code)}"`);
+  if (meta.market) attrs.push(`data-symbol-market="${esc(meta.market)}"`);
+  const extra = attrs.length ? ` ${attrs.join(" ")}` : "";
   return `<div class="symbol-ac-wrap">
     <input type="text" class="dl-symbol" placeholder="종목명·코드·티커" autocomplete="off"
       spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false"
-      value="${esc(v)}">
+      value="${esc(v)}"${extra}>
     <div class="symbol-ac-list" role="listbox" hidden></div>
   </div>`;
 }
