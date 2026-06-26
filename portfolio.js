@@ -254,14 +254,14 @@ function renderPosition(person, pos, renderSymbolInput) {
         <input type="hidden" class="pf-market-inp" value="${esc(pos.market || "")}">
       </div>
       ${`<p class="pf-warn"${stats.overSold ? "" : " hidden"}>매도 수량이 매수 합계를 초과했습니다.</p>`}
-      <div class="pf-trade-bar">
-        <button type="button" class="pf-add-lot pf-trade-btn buy" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매수 내역</button>
-        <button type="button" class="pf-add-sell pf-trade-btn sell" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매도 내역</button>
-        <button type="button" class="pf-remove-pos pf-edit-only" data-person="${person}" data-pos-id="${esc(pos.id)}">종목 삭제</button>
-      </div>
       <div class="pf-trade-list">
         ${renderTradeHead()}
         ${trades.map((t) => renderTradeRow(person, pos.id, t)).join("")}
+      </div>
+      <div class="pf-trade-foot">
+        <button type="button" class="pf-add-lot pf-trade-btn buy" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매수 내역</button>
+        <button type="button" class="pf-add-sell pf-trade-btn sell" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매도 내역</button>
+        <button type="button" class="pf-remove-pos pf-edit-only" data-person="${person}" data-pos-id="${esc(pos.id)}">종목 삭제</button>
       </div>
     </div>
   </div>`;
