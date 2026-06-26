@@ -1820,25 +1820,23 @@
     .pf-edit-only { display: none !important; }
     .pf-col.edit-mode .pf-edit-only { display: inline-flex !important; }
     .pf-trade-act,
-    .pf-trade-act-h { display: none; width: 28px; padding: 0 !important; }
+    .pf-trade-act-h { display: none; }
     .pf-col.edit-mode .pf-trade-act,
-    .pf-col.edit-mode .pf-trade-act-h { display: table-cell; }
+    .pf-col.edit-mode .pf-trade-act-h { display: flex; }
     .pf-col.edit-mode .pf-trade .ci-row-remove {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      position: static;
-      transform: none;
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       padding: 0;
       border: none;
       background: transparent;
       color: var(--muted);
       cursor: pointer;
-      font-size: 1rem;
+      font-size: .95rem;
       line-height: 1;
-      border-radius: 6px;
+      border-radius: 5px;
     }
     .pf-col.edit-mode .pf-trade .ci-row-remove:hover {
       color: var(--red);
@@ -1920,11 +1918,11 @@
     }
     .pf-position.is-open .pf-chevron { transform: rotate(-135deg); }
     .pf-pos-body {
-      padding: 0 12px 12px;
+      padding: 0 10px 10px;
       border-top: 1px dashed var(--border);
     }
     .pf-symbol-edit {
-      padding: 10px 0;
+      padding: 8px 0 6px;
       display: grid;
       grid-template-columns: auto 1fr;
       gap: 8px;
@@ -1935,67 +1933,98 @@
       font-weight: 700;
       color: var(--muted);
     }
-    .pf-lot-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .74rem;
-      table-layout: fixed;
+    .pf-trade-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 2px;
     }
-    .pf-trade-table .pf-td-tag { width: 36px; }
-    .pf-trade-table .pf-td-date { width: 76px; }
-    .pf-trade-table .pf-td-price { width: 72px; }
-    .pf-trade-table .pf-td-shares { width: 44px; }
-    .pf-trade-date-wrap {
-      width: 76px;
-      justify-self: center;
+    .pf-trade-head,
+    .pf-trade {
+      display: grid;
+      grid-template-columns: 22px minmax(48px, 1fr) 76px 60px 34px minmax(52px, auto);
+      gap: 3px;
+      align-items: center;
     }
-    .pf-lot-table th {
-      text-align: left;
-      font-size: .62rem;
+    .pf-col.edit-mode .pf-trade-head,
+    .pf-col.edit-mode .pf-trade {
+      grid-template-columns: 22px minmax(48px, 1fr) 76px 60px 34px minmax(52px, auto) 20px;
+    }
+    .pf-trade-head {
+      padding: 0 0 5px;
+      margin-bottom: 2px;
+      border-bottom: 1px solid var(--border);
+      font-size: .58rem;
       font-weight: 700;
       color: var(--muted);
-      padding: 6px 4px;
-      border-bottom: 1px solid var(--border);
+      letter-spacing: -.01em;
     }
-    .pf-lot-table th:nth-child(6),
-    .pf-lot-total { text-align: right; }
-    .pf-lot-table td { padding: 5px 3px; vertical-align: middle; }
-    .pf-lot-table .pf-broker {
+    .pf-th-price,
+    .pf-th-shares,
+    .pf-th-total { text-align: right; }
+    .pf-trade {
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, .04);
+    }
+    .pf-trade:last-child { border-bottom: none; }
+    .pf-trade-tag {
+      display: inline-block;
+      font-size: .56rem;
+      font-weight: 800;
+      padding: 2px 3px;
+      border-radius: 4px;
+      white-space: nowrap;
+      line-height: 1.2;
+      text-align: center;
+    }
+    .pf-trade-tag.buy { color: var(--yj); background: var(--yj-glow); }
+    .pf-trade-tag.sell { color: var(--red); background: var(--red-dim); }
+    .pf-trade-date-cell {
+      display: flex;
+      justify-content: center;
+    }
+    .pf-trade-date-wrap {
+      width: 76px;
+      margin: 0;
+    }
+    .pf-trade .pf-broker {
       width: 100%;
       min-width: 0;
-      padding: 5px 6px;
+      padding: 4px 3px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
       font-family: inherit;
-      font-size: .68rem;
+      font-size: .62rem;
+      font-weight: 600;
       background: var(--surface);
       box-sizing: border-box;
     }
-    .pf-lot-table .pf-price,
-    .pf-lot-table .pf-shares {
+    .pf-trade .pf-price,
+    .pf-trade .pf-shares {
       width: 100%;
       min-width: 0;
-      padding: 5px 6px;
+      padding: 4px 4px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
       font-family: inherit;
-      font-size: .74rem;
+      font-size: .72rem;
       background: var(--surface);
       box-sizing: border-box;
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
-    .pf-lot-table .pf-shares {
-      font-size: .72rem;
-      padding: 5px 4px;
+    .pf-trade .pf-shares {
+      font-size: .7rem;
+      padding: 4px 2px;
     }
-    .pf-lot-total {
+    .pf-trade .pf-lot-total {
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
-      font-size: .76rem;
-      color: var(--text);
-      padding-right: 2px !important;
+      font-size: .72rem;
+      text-align: right;
+      justify-self: end;
+      padding-right: 1px;
     }
     .pf-trade-sell .pf-lot-total { color: var(--red); }
     .pf-trade-buy .pf-lot-total { color: var(--yj); }
@@ -2007,9 +2036,9 @@
     }
     .pf-trade-bar {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
-      margin: 10px 0 8px;
+      margin: 8px 0 4px;
       flex-wrap: wrap;
     }
     .pf-trade-btn {
@@ -2047,19 +2076,6 @@
       border-color: var(--red);
       background: var(--red-dim);
     }
-    .pf-trade-table { margin-bottom: 4px; }
-    .pf-trade-buy { border-left: 2px solid var(--yj); }
-    .pf-trade-sell { border-left: 2px solid var(--red); }
-    .pf-trade-tag {
-      display: inline-block;
-      font-size: .58rem;
-      font-weight: 800;
-      padding: 2px 4px;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
-    .pf-trade-tag.buy { color: var(--yj); background: var(--yj-glow); }
-    .pf-trade-tag.sell { color: var(--red); background: var(--red-dim); }
     .pf-warn {
       font-size: .72rem;
       color: var(--red);
@@ -2118,10 +2134,14 @@
         order: 3;
         justify-content: flex-start;
       }
-      .pf-lot-table thead { display: none; }
-      .pf-trade { display: block; margin-bottom: 10px; padding: 10px; background: #fff; border-radius: 10px; }
-      .pf-trade td { display: block; padding: 4px 0; }
-      .pf-trade td:last-child { text-align: right; }
+      .pf-trade-list {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -2px;
+        padding-bottom: 2px;
+      }
+      .pf-trade-head,
+      .pf-trade { min-width: 300px; }
     }
 
     /* 포트폴리오 대시보드 · 도넛 */

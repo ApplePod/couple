@@ -29,6 +29,20 @@ export const BROKERS = [
   "기타",
 ];
 
+const BROKER_SHORT = {
+  한국투자증권: "한투",
+  키움증권: "키움",
+  미래에셋증권: "미래",
+  삼성증권: "삼성",
+  NH투자증권: "NH",
+  KB증권: "KB",
+  신한투자증권: "신한",
+  하나증권: "하나",
+  카카오페이증권: "카카오",
+  토스증권: "토스",
+  기타: "기타",
+};
+
 let portfolioData = loadPortfolio();
 let saveTimer = null;
 let cloudSaveInFlight = false;
@@ -89,9 +103,10 @@ function calcPersonSummary(positions) {
 
 
 function brokerOptions(selected) {
-  return BROKERS.map(
-    (b) => `<option value="${esc(b)}"${b === selected ? " selected" : ""}>${esc(b)}</option>`
-  ).join("");
+  return BROKERS.map((b) => {
+    const label = BROKER_SHORT[b] || b;
+    return `<option value="${esc(b)}"${b === selected ? " selected" : ""}>${esc(label)}</option>`;
+  }).join("");
 }
 
 function formatTradeDate(iso) {
@@ -171,20 +186,32 @@ function mergeTrades(pos) {
   return items;
 }
 
+function renderTradeHead() {
+  return `<div class="pf-trade-head">
+    <span class="pf-th-tag"></span>
+    <span class="pf-th-broker">증권사</span>
+    <span class="pf-th-date">거래일</span>
+    <span class="pf-th-price">단가</span>
+    <span class="pf-th-shares">수량</span>
+    <span class="pf-th-total">합계</span>
+    <span class="pf-trade-act-h"></span>
+  </div>`;
+}
+
 function renderTradeRow(person, posId, trade) {
   const isBuy = trade.type === "buy";
   const sh = Number(trade.shares) || 0;
   const pr = Number(trade.price) || 0;
   const lineTotal = sh > 0 && pr >= 0 ? sh * pr : 0;
-  return `<tr class="pf-trade ${isBuy ? "pf-trade-buy" : "pf-trade-sell"}" data-person="${person}" data-pos-id="${esc(posId)}" data-trade-type="${trade.type}" data-trade-id="${esc(trade.id)}">
-    <td class="pf-td-tag"><span class="pf-trade-tag ${isBuy ? "buy" : "sell"}">${isBuy ? "매수" : "매도"}</span></td>
-    <td class="pf-td-broker"><select class="pf-broker">${brokerOptions(trade.broker || BROKERS[0])}</select></td>
-    <td class="pf-td-date">${renderTradeDatePill(trade.date)}</td>
-    <td class="pf-td-price"><input type="text" class="pf-price" inputmode="numeric" placeholder="단가" value="${trade.price !== "" && trade.price != null ? Number(trade.price).toLocaleString("ko-KR") : ""}"></td>
-    <td class="pf-td-shares"><input type="text" class="pf-shares" inputmode="decimal" placeholder="0" value="${esc(trade.shares ?? "")}"></td>
-    <td class="pf-lot-total">${lineTotal ? fmtWon(lineTotal) : "—"}</td>
-    <td class="pf-trade-act"><button type="button" class="ci-row-remove" title="내역 삭제" aria-label="삭제">×</button></td>
-  </tr>`;
+  return `<div class="pf-trade ${isBuy ? "pf-trade-buy" : "pf-trade-sell"}" data-person="${person}" data-pos-id="${esc(posId)}" data-trade-type="${trade.type}" data-trade-id="${esc(trade.id)}">
+    <span class="pf-trade-tag ${isBuy ? "buy" : "sell"}">${isBuy ? "매수" : "매도"}</span>
+    <select class="pf-broker">${brokerOptions(trade.broker || BROKERS[0])}</select>
+    <div class="pf-trade-date-cell">${renderTradeDatePill(trade.date)}</div>
+    <input type="text" class="pf-price" inputmode="numeric" placeholder="단가" value="${trade.price !== "" && trade.price != null ? Number(trade.price).toLocaleString("ko-KR") : ""}">
+    <input type="text" class="pf-shares" inputmode="decimal" placeholder="0" value="${esc(trade.shares ?? "")}">
+    <span class="pf-lot-total">${lineTotal ? fmtWon(lineTotal) : "—"}</span>
+    <button type="button" class="ci-row-remove pf-trade-act" title="내역 삭제" aria-label="삭제">×</button>
+  </div>`;
 }
 
 function formatPnl(n) {
@@ -232,12 +259,10 @@ function renderPosition(person, pos, renderSymbolInput) {
         <button type="button" class="pf-add-sell pf-trade-btn sell" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매도 내역</button>
         <button type="button" class="pf-remove-pos pf-edit-only" data-person="${person}" data-pos-id="${esc(pos.id)}">종목 삭제</button>
       </div>
-      <table class="pf-lot-table pf-trade-table">
-        <thead>
-          <tr><th></th><th>증권사</th><th>거래일</th><th>단가</th><th>수량</th><th>합계</th><th class="pf-trade-act-h"></th></tr>
-        </thead>
-        <tbody>${trades.map((t) => renderTradeRow(person, pos.id, t)).join("")}</tbody>
-      </table>
+      <div class="pf-trade-list">
+        ${renderTradeHead()}
+        ${trades.map((t) => renderTradeRow(person, pos.id, t)).join("")}
+      </div>
     </div>
   </div>`;
 }
@@ -374,9 +399,10 @@ function resortTradeTable(posEl) {
   const posId = posEl.dataset.posId;
   const pos = portfolioData[person]?.positions?.find((p) => p.id === posId);
   if (!pos) return;
-  const tbody = posEl.querySelector(".pf-trade-table tbody");
-  if (!tbody) return;
-  tbody.innerHTML = mergeTrades(pos).map((t) => renderTradeRow(person, posId, t)).join("");
+  const list = posEl.querySelector(".pf-trade-list");
+  if (!list) return;
+  const head = list.querySelector(".pf-trade-head");
+  list.innerHTML = (head ? head.outerHTML : renderTradeHead()) + mergeTrades(pos).map((t) => renderTradeRow(person, posId, t)).join("");
 }
 
 function refreshSummaries() {
@@ -525,8 +551,8 @@ function attachPortfolioEvents(section, renderSymbolInput) {
             pos.lots = [lot];
             pos.sells = [];
           }
-          const tbody = posEl.querySelector(".pf-trade-table tbody");
-          tbody?.insertAdjacentHTML("beforeend", renderTradeRow(person, posId, { ...lot, type: "buy" }));
+          const list = posEl.querySelector(".pf-trade-list");
+          list?.insertAdjacentHTML("beforeend", renderTradeRow(person, posId, { ...lot, type: "buy" }));
         }
         syncFromDom();
         updatePositionHead(posEl);
