@@ -758,9 +758,21 @@
       line-height: 1.3;
     }
     .symbol-ac-meta {
-      font-size: .65rem;
+      font-size: .68rem;
       color: var(--muted);
+      font-weight: 600;
+    }
+    .symbol-ac-ticker {
+      font-size: .68rem;
+      font-weight: 800;
+      color: var(--sn);
       font-variant-numeric: tabular-nums;
+    }
+    .symbol-ac-status {
+      padding: 10px 12px;
+      font-size: .72rem;
+      color: var(--muted);
+      text-align: center;
     }
     .detail-table input, .detail-table select {
       width: 100%; padding: 7px 8px;

@@ -1,9 +1,11 @@
 /**
- * 국내 주식·ETF 종목 자동완성 (data/kr-symbols.json)
+ * 종목 자동완성 — 국내(kr-symbols.json) + 미국(Yahoo Search via Edge Function)
  */
 const SYMBOLS_URL = "data/kr-symbols.json";
 const MAX_RESULTS = 12;
 const MIN_QUERY_LEN = 1;
+const US_SEARCH_MIN = 2;
+const US_SEARCH_DEBOUNCE_MS = 280;
 
 /** 자주 찾는 종목 (동점·접두어 일치 시 우선) */
 const POPULAR_CODES = new Set([
@@ -13,6 +15,7 @@ const POPULAR_CODES = new Set([
 
 let symbols = [];
 let loadPromise = null;
+let usSearchSeq = 0;
 
 export function initSymbolSearch() {
   if (!loadPromise) {
@@ -34,6 +37,55 @@ export function initSymbolSearch() {
 
 function normQ(q) {
   return String(q ?? "").trim();
+}
+
+function symbolSearchUrl() {
+  const url = window.SUPABASE_CONFIG?.url;
+  if (!url) return null;
+  return `${url.replace(/\/$/, "")}/functions/v1/portfolio-symbol-search`;
+}
+
+async function fetchUsSymbolSearch(query, limit = MAX_RESULTS) {
+  const endpoint = symbolSearchUrl();
+  const anonKey = window.SUPABASE_CONFIG?.anonKey;
+  if (!endpoint || !anonKey) return [];
+
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${anonKey}`,
+        apikey: anonKey,
+      },
+      body: JSON.stringify({ q: query, limit }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.results) ? data.results : [];
+  } catch (e) {
+    console.warn("[symbol-search] 미국 검색 실패:", e);
+    return [];
+  }
+}
+
+function shouldSearchUs(query) {
+  const q = normQ(query);
+  if (q.length < US_SEARCH_MIN) return false;
+  if (/^\d+$/.test(compact(q))) return false;
+  return true;
+}
+
+function mergeSearchResults(kr, us, limit = MAX_RESULTS) {
+  const seen = new Set(kr.map((s) => s.code));
+  const out = [...kr];
+  for (const s of us) {
+    if (!s?.code || seen.has(s.code)) continue;
+    seen.add(s.code);
+    out.push(s);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 /** 한글·약어 → 영문 브랜드 (ETF 검색용) */
@@ -244,13 +296,13 @@ export function searchKrSymbols(query, limit = MAX_RESULTS) {
 function usTickerCandidate(query) {
   const raw = normQ(query);
   const upper = raw.toUpperCase();
-  if (!/^[A-Z][A-Z0-9.]{0,9}$/.test(upper)) return null;
+  if (!/^[A-Z][A-Z0-9.-]{0,9}$/.test(upper)) return null;
   if (/^\d+$/.test(upper)) return null;
   return { code: upper, name: upper, market: "US", abbr: upper };
 }
 
-/** 국내 + 미국 티커 (영문 1~10자) */
-export function searchSymbols(query, limit = MAX_RESULTS) {
+/** 국내 즉시 검색 (동기) */
+export function searchSymbolsLocal(query, limit = MAX_RESULTS) {
   const kr = searchKrSymbols(query, limit);
   const us = usTickerCandidate(query);
   if (!us) return kr;
@@ -258,28 +310,50 @@ export function searchSymbols(query, limit = MAX_RESULTS) {
   return [us, ...kr].slice(0, limit);
 }
 
-function marketLabel(m) {
-  if (m === "KOSPI") return "코스피";
-  if (m === "KOSDAQ") return "코스닥";
-  if (m === "ETF") return "ETF";
-  if (m === "US") return "미국";
-  return m || "";
+/** 국내 + 미국 Yahoo 검색 (비동기) */
+export async function searchSymbols(query, limit = MAX_RESULTS) {
+  const q = expandQuery(query);
+  const kr = searchKrSymbols(q, limit);
+  if (!shouldSearchUs(q)) {
+    return searchSymbolsLocal(q, limit);
+  }
+  const us = await fetchUsSymbolSearch(q, limit);
+  return mergeSearchResults(kr, us, limit);
 }
 
-function renderList(listEl, items) {
+function marketLabel(s) {
+  if (s.market === "US") {
+    return s.exchange ? `미국 · ${s.exchange}` : "미국";
+  }
+  if (s.market === "KOSPI") return "코스피";
+  if (s.market === "KOSDAQ") return "코스닥";
+  if (s.market === "ETF") return "ETF";
+  return s.market || "";
+}
+
+function renderList(listEl, items, opts = {}) {
+  if (opts.loading) {
+    listEl.hidden = false;
+    listEl.innerHTML = `<div class="symbol-ac-status">미국 종목 검색 중…</div>`;
+    return;
+  }
   if (!items.length) {
     listEl.hidden = true;
     listEl.innerHTML = "";
     return;
   }
   listEl.innerHTML = items
-    .map(
-      (s, i) =>
-        `<button type="button" class="symbol-ac-item" data-idx="${i}" role="option">
+    .map((s, i) => {
+      const sub =
+        s.market === "US" && s.code && s.name !== s.code
+          ? `<span class="symbol-ac-ticker">${esc(s.code)}</span>`
+          : "";
+      return `<button type="button" class="symbol-ac-item" data-idx="${i}" role="option">
           <span class="symbol-ac-name">${esc(s.name)}</span>
-          <span class="symbol-ac-meta">${esc(marketLabel(s.market))}</span>
-        </button>`
-    )
+          ${sub}
+          <span class="symbol-ac-meta">${esc(marketLabel(s))}</span>
+        </button>`;
+    })
     .join("");
   listEl.hidden = false;
 }
@@ -297,16 +371,49 @@ function closeList(wrap) {
   list.hidden = true;
   list.innerHTML = "";
   wrap.querySelector(".dl-symbol")?.removeAttribute("aria-expanded");
+  if (wrap._usSearchTimer) {
+    clearTimeout(wrap._usSearchTimer);
+    wrap._usSearchTimer = null;
+  }
 }
 
-function openList(wrap, query) {
+async function openList(wrap, query) {
   const input = wrap.querySelector(".dl-symbol");
   const list = wrap.querySelector(".symbol-ac-list");
   if (!input || !list) return;
-  const items = searchSymbols(query);
-  wrap._acItems = items;
-  renderList(list, items);
-  input.setAttribute("aria-expanded", items.length ? "true" : "false");
+
+  const q = normQ(query);
+  if (!q) {
+    closeList(wrap);
+    return;
+  }
+
+  delete wrap.dataset.acActive;
+  const local = searchSymbolsLocal(q, MAX_RESULTS);
+
+  if (!shouldSearchUs(q)) {
+    wrap._acItems = local;
+    renderList(list, local);
+    input.setAttribute("aria-expanded", local.length ? "true" : "false");
+    return;
+  }
+
+  const seq = ++usSearchSeq;
+  wrap._searchSeq = seq;
+  wrap._acItems = local;
+  renderList(list, local, { loading: true });
+  input.setAttribute("aria-expanded", "true");
+
+  if (wrap._usSearchTimer) clearTimeout(wrap._usSearchTimer);
+  wrap._usSearchTimer = setTimeout(async () => {
+    wrap._usSearchTimer = null;
+    const us = await fetchUsSymbolSearch(expandQuery(q), MAX_RESULTS);
+    if (wrap._searchSeq !== seq) return;
+    const merged = mergeSearchResults(searchKrSymbols(expandQuery(q), MAX_RESULTS), us, MAX_RESULTS);
+    wrap._acItems = merged;
+    renderList(list, merged);
+    input.setAttribute("aria-expanded", merged.length ? "true" : "false");
+  }, US_SEARCH_DEBOUNCE_MS);
 }
 
 function selectItem(wrap, item) {
@@ -342,14 +449,13 @@ export function attachSymbolAutocomplete(section) {
     if (!input) return;
     const wrap = input.closest(".symbol-ac-wrap");
     if (!wrap) return;
-    delete wrap.dataset.acActive;
-    openList(wrap, input.value);
+    void openList(wrap, input.value);
   });
 
   section.addEventListener("focusin", (e) => {
     const input = e.target.closest(".dl-symbol");
     if (!input?.value?.trim()) return;
-    openList(input.closest(".symbol-ac-wrap"), input.value);
+    void openList(input.closest(".symbol-ac-wrap"), input.value);
   });
 
   section.addEventListener("keydown", (e) => {
@@ -397,7 +503,7 @@ export function attachSymbolAutocomplete(section) {
 export function renderSymbolInput(value) {
   const v = String(value ?? "");
   return `<div class="symbol-ac-wrap">
-    <input type="text" class="dl-symbol" placeholder="종목명·코드" autocomplete="off"
+    <input type="text" class="dl-symbol" placeholder="종목명·코드·티커" autocomplete="off"
       spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false"
       value="${esc(v)}">
     <div class="symbol-ac-list" role="listbox" hidden></div>
