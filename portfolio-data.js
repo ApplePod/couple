@@ -181,3 +181,92 @@ export function defaultTradeDate(year, month) {
   }
   return `${y}-${String(m).padStart(2, "0")}-15`;
 }
+
+function positionKey(t) {
+  const code = String(t.code || "").trim();
+  const symbol = String(t.symbol || "").trim();
+  return code || symbol || t.id;
+}
+
+function hasTradeContent(row, pos) {
+  const sh = Number(row.shares) || 0;
+  const pr = Number(row.price) || 0;
+  return sh > 0 || pr > 0 || pos.symbol?.trim() || row.broker || row.date;
+}
+
+/** ledger[년][월] → 종목별 lots/sells (상단 입력 UI용) */
+export function ledgerToMonthPositions(data, year, month) {
+  const result = { yj: { positions: [] }, sn: { positions: [] } };
+  for (const person of ["yj", "sn"]) {
+    const map = new Map();
+    for (const t of getMonthTrades(data, year, month, person)) {
+      const key = positionKey(t);
+      if (!key) continue;
+      if (!map.has(key)) {
+        map.set(key, {
+          id: `pos_${person}_${key}`,
+          symbol: String(t.symbol || "").trim(),
+          code: String(t.code || "").trim(),
+          market: t.market || "",
+          lots: [],
+          sells: [],
+        });
+      }
+      const pos = map.get(key);
+      if (t.symbol) pos.symbol = pos.symbol || t.symbol;
+      if (t.code) pos.code = pos.code || t.code;
+      if (t.market) pos.market = pos.market || t.market;
+      const row = {
+        id: t.id,
+        broker: t.broker || "",
+        date: t.date || "",
+        price: t.price ?? "",
+        shares: t.shares ?? "",
+      };
+      if (t.type === "sell") pos.sells.push(row);
+      else pos.lots.push(row);
+    }
+    result[person].positions = [...map.values()];
+  }
+  return result;
+}
+
+/** 종목별 UI → ledger[년][월] trades */
+export function writeMonthPositionsToLedger(data, year, month, monthPositions) {
+  for (const person of ["yj", "sn"]) {
+    const trades = [];
+    for (const pos of monthPositions[person]?.positions || []) {
+      const base = {
+        symbol: pos.symbol || "",
+        code: pos.code || "",
+        market: pos.market || "",
+      };
+      for (const lot of pos.lots || []) {
+        if (!hasTradeContent(lot, pos)) continue;
+        trades.push({
+          id: lot.id || `lot_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          type: "buy",
+          ...base,
+          broker: lot.broker || "",
+          date: lot.date || "",
+          price: lot.price ?? "",
+          shares: lot.shares ?? "",
+        });
+      }
+      for (const sell of pos.sells || []) {
+        if (!hasTradeContent(sell, pos)) continue;
+        trades.push({
+          id: sell.id || `sell_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          type: "sell",
+          ...base,
+          broker: sell.broker || "",
+          date: sell.date || "",
+          price: sell.price ?? "",
+          shares: sell.shares ?? "",
+        });
+      }
+    }
+    setMonthTrades(data, year, month, person, trades);
+  }
+  return data;
+}
