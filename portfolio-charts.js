@@ -78,6 +78,45 @@ function sumSliceValues(slices) {
   return slices.reduce((s, x) => s + x.value, 0);
 }
 
+function positionKey(pos) {
+  return pos.code || pos.symbol?.trim() || pos.id;
+}
+
+/** 가구 전체 매수금액 순 — 동일 종목은 모든 차트에서 같은 색 */
+function buildSymbolColorMap(data) {
+  const totals = new Map();
+  for (const person of ["yj", "sn"]) {
+    for (const pos of data[person]?.positions || []) {
+      const cost = buyCostKrw(pos);
+      if (cost <= 0) continue;
+      const key = positionKey(pos);
+      const label = pos.symbol?.trim() || "미입력";
+      const cur = totals.get(key) || { key, label, value: 0 };
+      cur.value += cost;
+      totals.set(key, cur);
+    }
+  }
+  const ranked = [...totals.values()].sort((a, b) => b.value - a.value);
+  const byKey = new Map();
+  const byLabel = new Map();
+  ranked.forEach((item, i) => {
+    const color = SLICE_COLORS[i % SLICE_COLORS.length];
+    byKey.set(item.key, color);
+    byLabel.set(item.label, color);
+  });
+  return { byKey, byLabel };
+}
+
+function resolveSliceColor(slice, colorMap) {
+  if (slice.label === "기타") return OTHER_COLOR;
+  if (!colorMap) return null;
+  return colorMap.byKey.get(slice.colorKey) || colorMap.byLabel.get(slice.label) || OTHER_COLOR;
+}
+
+function applySliceColors(slices, colorMap) {
+  return slices.map((s) => ({ ...s, color: resolveSliceColor(s, colorMap) }));
+}
+
 /** 자산 유형별 매수 금액 (국내주식·ETF·미국주식) */
 export function getAssetTypeSlices(data) {
   const map = new Map();
@@ -97,7 +136,7 @@ export function getAssetTypeSlices(data) {
 }
 
 /** 종목별 매수 금액 */
-export function getBuySlices(positions, max = 8, palette = null) {
+export function getBuySlices(positions, max = 8, colorMap = null) {
   const items = [];
   for (const pos of positions || []) {
     const cost = buyCostKrw(pos);
@@ -105,32 +144,28 @@ export function getBuySlices(positions, max = 8, palette = null) {
     const stats = positionStats(pos);
     items.push({
       label: pos.symbol?.trim() || "미입력",
+      colorKey: positionKey(pos),
       value: cost,
       shares: stats.buyShares,
       avgPrice: stats.avgPrice,
     });
   }
   items.sort((a, b) => b.value - a.value);
-  const out = collapseSlices(items, max);
-  if (palette) {
-    return out.map((s, i) => ({
-      ...s,
-      color: s.label === "기타" ? OTHER_COLOR : palette[i % palette.length],
-    }));
-  }
-  return out;
+  const out = collapseSlices(items, max, !colorMap);
+  return colorMap ? applySliceColors(out, colorMap) : out;
 }
 
 /** 가구 전체 — 동일 종목 매수 합산 */
-export function getHouseholdBuySlices(data, max = 10) {
+export function getHouseholdBuySlices(data, max = 10, colorMap = null) {
   const map = new Map();
   for (const person of ["yj", "sn"]) {
     for (const pos of data[person]?.positions || []) {
       const cost = buyCostKrw(pos);
       if (cost <= 0) continue;
-      const key = pos.code || pos.symbol?.trim() || pos.id;
+      const key = positionKey(pos);
       const cur = map.get(key) || {
         label: pos.symbol?.trim() || "미입력",
+        colorKey: key,
         value: 0,
         shares: 0,
         yjCost: 0,
@@ -150,7 +185,8 @@ export function getHouseholdBuySlices(data, max = 10) {
       avgPrice: it.shares > 0 ? it.value / it.shares : 0,
     }))
     .sort((a, b) => b.value - a.value);
-  return collapseSlices(items, max);
+  const out = collapseSlices(items, max, !colorMap);
+  return colorMap ? applySliceColors(out, colorMap) : out;
 }
 
 function totalBuyCost(data) {
@@ -254,15 +290,21 @@ export function getBrokerSlices(data, person = null, max = 8) {
   return collapseSlices(items, max);
 }
 
-function collapseSlices(items, max) {
+function collapseSlices(items, max, assignDefaultColors = true) {
   if (items.length <= max) {
-    return items.map((it, i) => ({ ...it, color: it.color || SLICE_COLORS[i % SLICE_COLORS.length] }));
+    return items.map((it, i) =>
+      assignDefaultColors
+        ? { ...it, color: it.color || SLICE_COLORS[i % SLICE_COLORS.length] }
+        : { ...it }
+    );
   }
   const head = items.slice(0, max - 1);
   const tail = items.slice(max - 1);
   const otherVal = tail.reduce((s, x) => s + x.value, 0);
   return [
-    ...head.map((it, i) => ({ ...it, color: it.color || SLICE_COLORS[i % SLICE_COLORS.length] })),
+    ...(assignDefaultColors
+      ? head.map((it, i) => ({ ...it, color: it.color || SLICE_COLORS[i % SLICE_COLORS.length] }))
+      : head),
     { label: "기타", value: otherVal, color: OTHER_COLOR },
   ];
 }
@@ -477,10 +519,11 @@ function countBuySymbols(data) {
 }
 
 export function renderPortfolioDashboard(data, quoteState) {
+  const symbolColors = buildSymbolColorMap(data);
   const assetSlices = getAssetTypeSlices(data);
-  const yjBuySlices = getBuySlices(data.yj?.positions, 8, YJ_PASTELS);
-  const snBuySlices = getBuySlices(data.sn?.positions, 8, SN_PASTELS);
-  const totalBuySlices = getHouseholdBuySlices(data, 10);
+  const yjBuySlices = getBuySlices(data.yj?.positions, 8, symbolColors);
+  const snBuySlices = getBuySlices(data.sn?.positions, 8, symbolColors);
+  const totalBuySlices = getHouseholdBuySlices(data, 10, symbolColors);
   const buyTotal = totalBuyCost(data);
   const topBuy = totalBuySlices[0];
   const symbolCount = countBuySymbols(data);
@@ -578,23 +621,19 @@ export function renderPortfolioDashboard(data, quoteState) {
   </div>`;
 }
 
-export function renderPersonChart(person, label, positions) {
-  const slices = getBuySlices(positions, 8, person === "yj" ? YJ_PASTELS : SN_PASTELS);
+export function renderPersonChart(person, label, positions, colorMap) {
+  const slices = getBuySlices(positions, 8, colorMap);
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) {
     return `<div class="pf-person-chart pf-person-chart-empty" data-pf-person-chart="${person}">
       <span>종목 입력 후 비중 차트가 표시됩니다</span>
     </div>`;
   }
-  const tinted = slices.map((s, i) => ({
-    ...s,
-    color: (person === "yj" ? YJ_PASTELS : SN_PASTELS)[i % 8],
-  }));
   return `<div class="pf-person-chart" data-pf-person-chart="${person}">
     <div class="pf-person-chart-inner">
-      ${renderDonut(tinted, { size: 120, stroke: 18, centerTitle: label, centerValue: fmtWon(total) })}
+      ${renderDonut(slices, { size: 120, stroke: 18, centerTitle: label, centerValue: fmtWon(total) })}
       <div class="pf-person-mini-legend">
-        ${tinted
+        ${slices
           .slice(0, 5)
           .map(
             (s) => `<span class="pf-mini-leg">
@@ -602,7 +641,7 @@ export function renderPersonChart(person, label, positions) {
             </span>`
           )
           .join("")}
-        ${tinted.length > 5 ? `<span class="pf-mini-more">+${tinted.length - 5}</span>` : ""}
+        ${slices.length > 5 ? `<span class="pf-mini-more">+${slices.length - 5}</span>` : ""}
       </div>
     </div>
   </div>`;
@@ -646,7 +685,8 @@ export function updatePortfolioCharts(section, data, quoteState) {
     const el = section.querySelector(`[data-pf-person-chart="${person}"]`);
     if (!el) continue;
     const label = person === "yj" ? "영재" : "시온";
-    const html = renderPersonChart(person, label, data[person]?.positions);
+    const colorMap = buildSymbolColorMap(data);
+    const html = renderPersonChart(person, label, data[person]?.positions, colorMap);
     const wrap = document.createElement("div");
     wrap.innerHTML = html;
     el.replaceWith(wrap.firstElementChild);
