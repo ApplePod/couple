@@ -492,7 +492,7 @@
       padding: 10px 10px 12px;
       background: linear-gradient(180deg, rgba(255,248,245,.55) 0%, var(--surface2) 100%);
       border-color: rgba(249,143,117,.18);
-      --lb-cols: minmax(84px, 1fr) minmax(0, 2.2fr) 62px 72px;
+      --lb-cols: minmax(92px, 1.2fr) minmax(0, 2fr) 62px 72px;
     }
     .living-budget-details .detail-head {
       padding: 2px 2px 8px;
@@ -685,7 +685,7 @@
     }
     .living-budget-add-row {
       display: grid;
-      grid-template-columns: minmax(84px, 1fr) minmax(0, 2.2fr) 62px auto;
+      grid-template-columns: minmax(92px, 1.2fr) minmax(0, 2fr) 62px auto;
       gap: 6px;
       align-items: center;
       width: 100%;
