@@ -562,7 +562,6 @@
     }
     .lb-category-select,
     .lb-note,
-    .lb-row .lb-plan,
     .lb-row .ci-actual {
       width: 100%;
       padding: 8px 10px;
@@ -586,11 +585,23 @@
       font-weight: 600;
     }
     .lb-note::placeholder { color: var(--muted); opacity: .7; }
-    .lb-row .lb-plan,
     .lb-row .ci-actual { text-align: right; font-variant-numeric: tabular-nums; }
+    .lb-date-field .lb-date-wrap {
+      width: 100%;
+      justify-self: stretch;
+    }
+    .lb-date-field .ci-date-pill {
+      width: 100%;
+      min-width: 0;
+    }
+    .lb-date-custom .lb-date-wrap {
+      width: 100%;
+    }
+    .lb-date-custom .ci-date-pill {
+      width: 100%;
+    }
     .lb-category-select:focus,
     .lb-note:focus,
-    .lb-row .lb-plan:focus,
     .lb-row .ci-actual:focus {
       outline: none;
       border-color: var(--main);
@@ -598,7 +609,6 @@
     }
     .tracker-col.sn .lb-category-select:focus,
     .tracker-col.sn .lb-note:focus,
-    .tracker-col.sn .lb-row .lb-plan:focus,
     .tracker-col.sn .lb-row .ci-actual:focus {
       border-color: var(--sn);
       box-shadow: 0 0 0 3px var(--sn-glow);
@@ -626,13 +636,13 @@
         grid-template-areas:
           "cat cat"
           "note note"
-          "plan actual"
+          "date actual"
           "rm rm";
         gap: 8px 10px;
       }
       .lb-cat-field { grid-area: cat; }
       .lb-note-field { grid-area: note; }
-      .lb-plan-field { grid-area: plan; }
+      .lb-date-field { grid-area: date; }
       .lb-actual-field { grid-area: actual; }
       .lb-rm-field { grid-area: rm; justify-content: flex-end; }
       .lb-lbl { display: block; }
@@ -652,16 +662,15 @@
     @media (max-width: 700px) {
       .living-budget-add-row {
         grid-template-columns: 1fr 1fr;
-        grid-template-areas: "pick pick" "note plan" "add add";
+        grid-template-areas: "pick pick" "note date" "add add";
       }
       .living-budget-add-row .lb-cat-pick { grid-area: pick; }
       .living-budget-add-row .lb-note-custom { grid-area: note; }
-      .living-budget-add-row .lb-plan-custom { grid-area: plan; }
+      .living-budget-add-row .lb-date-custom { grid-area: date; }
       .living-budget-add-row .living-budget-add-btn { grid-area: add; width: 100%; }
     }
     .living-budget-add-row .lb-cat-pick,
-    .living-budget-add-row .lb-note-custom,
-    .living-budget-add-row .lb-plan-custom {
+    .living-budget-add-row .lb-note-custom {
       padding: 8px 10px;
       background: #fff;
       border: 1px solid var(--border);
@@ -679,7 +688,6 @@
       background-position: right 8px center;
       padding-right: 28px;
     }
-    .living-budget-add-row .lb-plan-custom { text-align: right; }
     .living-budget-add-row .living-budget-add-btn {
       padding: 8px 14px;
       border: 1px dashed rgba(249,143,117,.45);

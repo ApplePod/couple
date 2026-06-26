@@ -430,10 +430,10 @@ const LIVING_DETAIL_EXTRA = ['여행', '주거비', '월세 대출이자', '전�
 function defaultLivingBudgetDetail() {
   return {
     type: 'living',
-    lines: LIVING_CATS.map((cat, i) => ({
+    lines: LIVING_CATS.map((cat) => ({
       slotId: cat.id,
       category: cat.name,
-      plan: LIVING_PRESETS.normal[i],
+      date: '',
       amount: '',
       note: cat.hint || '',
     })),
@@ -445,13 +445,13 @@ function normalizeLivingBudgetDetail(d) {
   const bySlot = new Map(raw.filter((l) => l.slotId).map((l) => [l.slotId, l]));
   const byCat = new Map(raw.map((l) => [l.category, l]));
   const consumed = new Set();
-  const lines = LIVING_CATS.map((cat, i) => {
+  const lines = LIVING_CATS.map((cat) => {
     const existing = bySlot.get(cat.id) || byCat.get(cat.name);
     if (existing) consumed.add(existing);
     return {
       slotId: cat.id,
       category: existing?.category ?? cat.name,
-      plan: existing?.plan ?? LIVING_PRESETS.normal[i],
+      date: existing?.date ?? '',
       amount: existing?.amount ?? '',
       note: existing?.note ?? cat.hint ?? '',
     };
@@ -460,7 +460,7 @@ function normalizeLivingBudgetDetail(d) {
     if (consumed.has(l) || l.slotId) continue;
     lines.push({
       category: l.category || '기타',
-      plan: l.plan ?? 0,
+      date: l.date ?? '',
       amount: l.amount ?? '',
       note: l.note ?? '',
     });
@@ -492,13 +492,17 @@ function livingBudgetAddOptions(existingCats) {
   return [...new Set(base)].filter((n) => !existingCats.includes(n));
 }
 
-function sumLivingBudgetPlan(detail) {
-  return (detail?.lines || []).reduce((s, ln) => s + (Number(ln.plan) || 0), 0);
+function renderLbDatePill(date) {
+  const has = !!date;
+  return `<div class="ci-date-wrap lb-date-wrap">
+    <button type="button" class="ci-date-pill${has ? ' has-value' : ''}" aria-label="날짜 선택">
+      <span class="ci-date-text">${formatDepositDisplay(date)}</span>
+    </button>
+    <input type="date" class="ci-date-input lb-date-input" value="${escAttr(date || '')}" tabindex="-1" aria-hidden="true">
+  </div>`;
 }
 
 function renderLivingBudgetLine(ln, i) {
-  const plan = Number(ln.plan) || 0;
-  const planVal = plan ? formatActualInput(plan) : '';
   const icon = livingBudgetCatIcon(ln.category);
   const slotAttr = ln.slotId ? ` data-slot-id="${escAttr(ln.slotId)}"` : '';
   const removeBtn = ln.slotId
@@ -517,9 +521,9 @@ function renderLivingBudgetLine(ln, i) {
         <span class="lb-lbl">비고</span>
         <input type="text" class="lb-note" placeholder="내용 메모" value="${escAttr(ln.note || '')}">
       </div>
-      <div class="lb-field lb-plan-field">
-        <span class="lb-lbl">계획</span>
-        <input type="text" class="lb-plan me-plan" placeholder="—" inputmode="numeric" value="${planVal}">
+      <div class="lb-field lb-date-field">
+        <span class="lb-lbl">날짜</span>
+        ${renderLbDatePill(ln.date)}
       </div>
       <div class="lb-field lb-actual-field">
         <span class="lb-lbl">실제</span>
@@ -534,7 +538,7 @@ function renderLivingBudgetLine(ln, i) {
 function renderLivingBudgetTable(lines) {
   return `<div class="lb-table">
     <div class="lb-table-head" aria-hidden="true">
-      <span>분류</span><span>비고</span><span>계획</span><span>실제</span><span></span>
+      <span>분류</span><span>비고</span><span>날짜</span><span>실제</span><span></span>
     </div>
     <div class="living-budget-body detail-body">${renderLivingBudgetLines(lines)}</div>
   </div>`;
@@ -907,10 +911,7 @@ function ensureDetail(person, it) {
 }
 
 function itemPlanAmount(person, it) {
-  if (it.livingBudget) {
-    const d = ensureDetail(person, it);
-    return d.lines.reduce((s, ln) => s + (Number(ln.plan) || 0), 0);
-  }
+  if (it.livingBudget) return 0;
   return it.amt;
 }
 
@@ -972,7 +973,7 @@ function renderDetailPanel(person, it) {
         <div class="living-budget-add-row">
           <select class="lb-cat-pick"${addOpts.length ? '' : ' disabled'}>${pickOpts}</select>
           <input type="text" class="lb-note-custom" placeholder="비고 (선택)">
-          <input type="text" class="lb-plan-custom me-plan" placeholder="계획" inputmode="numeric">
+          <div class="lb-date-custom">${renderLbDatePill('')}</div>
           <button type="button" class="detail-add living-budget-add-btn" data-person="${person}" data-id="${it.id}"${addOpts.length ? '' : ' disabled'}>+ 추가</button>
         </div>
         <div class="detail-total"><span>실제 합계</span><span class="dt-val">${fmt(total)}</span></div>
@@ -1022,7 +1023,7 @@ function readDetailFromWrap(detailsEl) {
       slotId: row.dataset.slotId || undefined,
       category: row.querySelector('.lb-category-select')?.value || '',
       note: row.querySelector('.lb-note')?.value || '',
-      plan: parseActualInput(row.querySelector('.lb-plan')?.value || ''),
+      date: row.querySelector('.lb-date-input')?.value || '',
       amount: parseActualInput(row.querySelector('.ci-actual')?.value || ''),
     }));
     return { type: 'living', lines };
@@ -1057,11 +1058,6 @@ function syncDetailToStore(detailsEl) {
   if (actualInp) {
     actualInp.value = total ? formatActualInput(total) : '';
     budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, person, id, total || '');
-  }
-  if (it?.livingBudget) {
-    const planTotal = sumLivingBudgetPlan(detail);
-    const mainPlan = wrap?.querySelector(':scope > .check-item > .ci-plan');
-    if (mainPlan) mainPlan.innerHTML = `<span>계획</span>${planTotal ? fmtShort(planTotal) : '—'}`;
   }
   updateWalletSummaries();
   scheduleSave();
@@ -1381,10 +1377,10 @@ function attachTrackerEvents() {
         const cat = pick?.value;
         if (!cat) return;
         const noteInp = detailsEl.querySelector('.lb-note-custom');
-        const planInp = detailsEl.querySelector('.lb-plan-custom');
+        const dateInp = detailsEl.querySelector('.lb-date-custom .lb-date-input');
         const newLine = {
           category: cat,
-          plan: parseActualInput(planInp?.value || '') || 0,
+          date: dateInp?.value || '',
           amount: '',
           note: noteInp?.value?.trim() || '',
         };
@@ -1394,7 +1390,10 @@ function attachTrackerEvents() {
         body.insertAdjacentHTML('beforeend', renderLivingBudgetLine(newLine, detail.lines.length - 1));
         if (pick.options.length) pick.selectedIndex = 0;
         if (noteInp) noteInp.value = '';
-        if (planInp) planInp.value = '';
+        if (dateInp) {
+          dateInp.value = '';
+          syncDatePill(dateInp);
+        }
         syncDetailToStore(detailsEl);
         return;
       }
@@ -1433,7 +1432,13 @@ function attachTrackerEvents() {
   section.onchange = e => {
     const dateInp = e.target.closest('.ci-date-input');
     if (dateInp) {
-      saveDepositDate(dateInp);
+      const lbDetails = dateInp.closest('.living-budget-details');
+      if (lbDetails) {
+        syncDatePill(dateInp);
+        syncDetailToStore(lbDetails);
+      } else {
+        saveDepositDate(dateInp);
+      }
       return;
     }
     const meCheck = e.target.closest('.me-check');
@@ -1472,7 +1477,13 @@ function attachTrackerEvents() {
   section.oninput = e => {
     const dateInp = e.target.closest('.ci-date-input');
     if (dateInp) {
-      saveDepositDate(dateInp);
+      const lbDetails = dateInp.closest('.living-budget-details');
+      if (lbDetails) {
+        syncDatePill(dateInp);
+        syncDetailToStore(lbDetails);
+      } else {
+        saveDepositDate(dateInp);
+      }
       return;
     }
     const meName = e.target.closest('.me-name');
@@ -1526,13 +1537,6 @@ function attachTrackerEvents() {
   };
 
   section.addEventListener('blur', e => {
-    const lbPlan = e.target.closest('.lb-plan');
-    if (lbPlan?.closest('.living-budget-details')) {
-      const n = parseActualInput(lbPlan.value);
-      lbPlan.value = n ? formatActualInput(n) : '';
-      syncDetailToStore(lbPlan.closest('.item-details'));
-      return;
-    }
     const mePlan = e.target.closest('.me-plan');
     if (mePlan && !mePlan.closest('.living-budget-details')) {
       const lines = getMonthlyExtraLines(mePlan.dataset.person);
