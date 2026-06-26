@@ -43,8 +43,22 @@ export async function initStore(onRemoteChange) {
 
     if (error) console.warn("[budget] Supabase load:", error.message);
     else if (data?.checks) {
-      localStorage.setItem(LS_KEY, JSON.stringify(data.checks));
-      onRemoteChange?.(data.checks);
+      const remote = data.checks;
+      const local = loadChecks();
+      const localStr = JSON.stringify(local);
+      const remoteStr = JSON.stringify(remote);
+      if (localStr === remoteStr) {
+        onRemoteChange?.(remote, { source: "initial" });
+      } else if (Object.keys(local).length === 0) {
+        localStorage.setItem(LS_KEY, remoteStr);
+        onRemoteChange?.(remote, { source: "initial" });
+      } else {
+        // 로컬에 미동기화 변경이 있으면 로컬 우선 후 클라우드에 반영
+        console.info("[budget] 로컬·원격 불일치 → 로컬 우선");
+        localStorage.setItem(LS_KEY, localStr);
+        onRemoteChange?.(local, { source: "initial" });
+        saveChecks(local).catch((e) => console.warn("[budget] 로컬 동기화:", e));
+      }
     }
 
     realtimeChannel = supabase
@@ -59,10 +73,7 @@ export async function initStore(onRemoteChange) {
         },
         (payload) => {
           const checks = payload.new?.checks;
-          if (checks) {
-            localStorage.setItem(LS_KEY, JSON.stringify(checks));
-            onRemoteChange?.(checks);
-          }
+          if (checks) onRemoteChange?.(checks, { source: "realtime" });
         }
       )
       .subscribe();
@@ -82,9 +93,11 @@ export function loadChecks() {
   }
 }
 
-export async function saveChecks(checks) {
+export function persistChecksLocal(checks) {
   localStorage.setItem(LS_KEY, JSON.stringify(checks));
+}
 
+export async function saveChecksToCloud(checks) {
   if (!supabaseReady || !supabase) return { ok: true, mode: "local" };
 
   try {
@@ -100,6 +113,11 @@ export async function saveChecks(checks) {
     console.warn("[budget] Supabase save:", e);
     return { ok: false, mode: "local", error: e.message };
   }
+}
+
+export async function saveChecks(checks) {
+  persistChecksLocal(checks);
+  return saveChecksToCloud(checks);
 }
 
 export function checkKey(person, itemId) {

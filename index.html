@@ -58,7 +58,7 @@
 
 <script src="supabase-config.js"></script>
 <script type="module">
-import { initStore, loadChecks, saveChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
+import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
 import {
   INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
   aggregateActualInvestments, aggregateProjectedInvestments,
@@ -199,6 +199,8 @@ let trackerYear = TRACKER_YEARS[0];
 let trackerMonth = '7';
 let forecastYear = TRACKER_YEARS[0];
 let saveTimer = null;
+let cloudSaveInFlight = false;
+let lastCloudJson = JSON.stringify(loadChecks());
 let storeMode = 'local';
 let trackerEditMode = { yj: false, sn: false };
 
@@ -429,38 +431,117 @@ function defaultLivingBudgetDetail() {
   return {
     type: 'living',
     lines: LIVING_CATS.map((cat, i) => ({
+      slotId: cat.id,
       category: cat.name,
       plan: LIVING_PRESETS.normal[i],
       amount: '',
+      note: cat.hint || '',
     })),
   };
 }
 
 function normalizeLivingBudgetDetail(d) {
-  const byCat = new Map((d?.lines || []).map((l) => [l.category, l]));
+  const raw = d?.lines || [];
+  const bySlot = new Map(raw.filter((l) => l.slotId).map((l) => [l.slotId, l]));
+  const byCat = new Map(raw.map((l) => [l.category, l]));
+  const consumed = new Set();
   const lines = LIVING_CATS.map((cat, i) => {
-    const existing = byCat.get(cat.name);
+    const existing = bySlot.get(cat.id) || byCat.get(cat.name);
+    if (existing) consumed.add(existing);
     return {
-      category: cat.name,
+      slotId: cat.id,
+      category: existing?.category ?? cat.name,
       plan: existing?.plan ?? LIVING_PRESETS.normal[i],
       amount: existing?.amount ?? '',
+      note: existing?.note ?? cat.hint ?? '',
     };
   });
-  for (const l of d?.lines || []) {
-    if (!LIVING_CATS.some((c) => c.name === l.category)) {
-      lines.push({
-        category: l.category,
-        plan: l.plan ?? 0,
-        amount: l.amount ?? '',
-      });
-    }
+  for (const l of raw) {
+    if (consumed.has(l) || l.slotId) continue;
+    lines.push({
+      category: l.category || '기타',
+      plan: l.plan ?? 0,
+      amount: l.amount ?? '',
+      note: l.note ?? '',
+    });
   }
   return { type: 'living', lines };
 }
 
+function livingBudgetCategoryOptions() {
+  return [...new Set([...LIVING_CATS.map((c) => c.name), ...LIVING_DETAIL_EXTRA])];
+}
+
+function livingBudgetCatIcon(name) {
+  const cat = LIVING_CATS.find((c) => c.name === name);
+  return cat?.icon || '·';
+}
+
+function renderLivingBudgetCategorySelect(selected) {
+  const opts = livingBudgetCategoryOptions();
+  const options = opts.map((o) =>
+    `<option value="${escAttr(o)}"${o === selected ? ' selected' : ''}>${escAttr(o)}</option>`
+  ).join('');
+  const custom = selected && !opts.includes(selected)
+    ? `<option value="${escAttr(selected)}" selected>${escAttr(selected)}</option>` : '';
+  return `<select class="lb-category-select" aria-label="분류">${custom}${options}</select>`;
+}
+
 function livingBudgetAddOptions(existingCats) {
-  const base = [...LIVING_CATS.map((c) => c.name), ...LIVING_DETAIL_EXTRA];
+  const base = [...LIVING_CATS.map((c) => c.name), ...LIVING_DETAIL_EXTRA, '기타'];
   return [...new Set(base)].filter((n) => !existingCats.includes(n));
+}
+
+function sumLivingBudgetPlan(detail) {
+  return (detail?.lines || []).reduce((s, ln) => s + (Number(ln.plan) || 0), 0);
+}
+
+function renderLivingBudgetLine(ln, i) {
+  const plan = Number(ln.plan) || 0;
+  const planVal = plan ? formatActualInput(plan) : '';
+  const icon = livingBudgetCatIcon(ln.category);
+  const slotAttr = ln.slotId ? ` data-slot-id="${escAttr(ln.slotId)}"` : '';
+  const removeBtn = ln.slotId
+    ? '<span class="lb-rm-spacer" aria-hidden="true"></span>'
+    : '<button type="button" class="lb-remove" title="삭제" aria-label="삭제">×</button>';
+  return `<div class="lb-row${ln.slotId ? ' is-slot' : ''}" data-idx="${i}"${slotAttr}>
+    <div class="lb-row-grid">
+      <div class="lb-field lb-cat-field">
+        <span class="lb-lbl">분류</span>
+        <div class="lb-cat-wrap">
+          <span class="lb-cat-icon" aria-hidden="true">${icon}</span>
+          ${renderLivingBudgetCategorySelect(ln.category)}
+        </div>
+      </div>
+      <div class="lb-field lb-note-field">
+        <span class="lb-lbl">비고</span>
+        <input type="text" class="lb-note" placeholder="내용 메모" value="${escAttr(ln.note || '')}">
+      </div>
+      <div class="lb-field lb-plan-field">
+        <span class="lb-lbl">계획</span>
+        <input type="text" class="lb-plan me-plan" placeholder="—" inputmode="numeric" value="${planVal}">
+      </div>
+      <div class="lb-field lb-actual-field">
+        <span class="lb-lbl">실제</span>
+        <input type="text" class="ci-actual" placeholder="실제 금액" inputmode="numeric"
+          value="${formatDetailAmt(ln.amount)}">
+      </div>
+      <div class="lb-field lb-rm-field">${removeBtn}</div>
+    </div>
+  </div>`;
+}
+
+function renderLivingBudgetTable(lines) {
+  return `<div class="lb-table">
+    <div class="lb-table-head" aria-hidden="true">
+      <span>분류</span><span>비고</span><span>계획</span><span>실제</span><span></span>
+    </div>
+    <div class="living-budget-body detail-body">${renderLivingBudgetLines(lines)}</div>
+  </div>`;
+}
+
+function renderLivingBudgetLines(lines) {
+  return lines.map((ln, i) => renderLivingBudgetLine(ln, i)).join('');
 }
 
 function renderLivingBudget() {
@@ -571,15 +652,58 @@ function setSyncStatus(state, text) {
   el.textContent = text;
 }
 
+function checksJson(checks) {
+  return JSON.stringify(checks);
+}
+
+function hasUnsyncedCloudEdits() {
+  return checksJson(budgetChecks) !== lastCloudJson;
+}
+
+function setSaveStatus(res) {
+  if (res.ok && res.mode === 'supabase') setSyncStatus('supabase', 'Supabase 저장됨');
+  else if (res.ok) setSyncStatus('', '브라우저에 저장됨');
+  else setSyncStatus('error', '저장 실패 — 로컬만');
+}
+
+async function flushCloudSave() {
+  if (!hasUnsyncedCloudEdits()) {
+    if (storeMode === 'supabase') setSyncStatus('supabase', 'Supabase 저장됨');
+    else setSyncStatus('', '브라우저에 저장됨');
+    return;
+  }
+  cloudSaveInFlight = true;
+  const res = await saveChecksToCloud(budgetChecks);
+  cloudSaveInFlight = false;
+  if (res.ok) lastCloudJson = checksJson(budgetChecks);
+  setSaveStatus(res);
+}
+
 function scheduleSave() {
+  persistChecksLocal(budgetChecks);
   setSyncStatus('saving', '저장 중…');
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    const res = await saveChecks(budgetChecks);
-    if (res.ok && res.mode === 'supabase') setSyncStatus('supabase', 'Supabase 저장됨');
-    else if (res.ok) setSyncStatus('', '브라우저에 저장됨');
-    else setSyncStatus('error', '저장 실패 — 로컬만');
-  }, 500);
+  saveTimer = setTimeout(() => flushCloudSave(), 500);
+}
+
+async function flushSave() {
+  persistChecksLocal(budgetChecks);
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  await flushCloudSave();
+}
+
+function applyRemoteChecks(remote, meta = {}) {
+  const remoteJson = checksJson(remote);
+  if (meta.source === 'realtime') {
+    if (hasUnsyncedCloudEdits() || cloudSaveInFlight) return;
+    if (remoteJson === checksJson(budgetChecks) || remoteJson === lastCloudJson) return;
+  }
+  budgetChecks = remote;
+  lastCloudJson = remoteJson;
+  persistChecksLocal(remote);
+  renderTracker();
+  renderForecast();
 }
 
 function getVisibleItems(person) {
@@ -815,21 +939,6 @@ function renderInvestLines(lines) {
     </tr>`).join('');
 }
 
-function renderLivingBudgetLines(lines) {
-  return lines.map((ln, i) => {
-    const plan = Number(ln.plan) || 0;
-    return `<div class="living-budget-line check-item sub" data-idx="${i}">
-      <div class="ci-name"><span class="ci-name-main">${escAttr(ln.category)}</span><small>직접 관리</small></div>
-      <div class="ci-plan"><span>계획</span>${plan ? fmtShort(plan) : '—'}</div>
-      <input type="text" class="ci-actual" placeholder="실제 금액" inputmode="numeric"
-        value="${formatDetailAmt(ln.amount)}">
-      <input type="hidden" class="dl-category" value="${escAttr(ln.category)}">
-      <input type="hidden" class="dl-plan" value="${plan}">
-      <button type="button" class="dl-remove lb-remove" title="삭제">×</button>
-    </div>`;
-  }).join('');
-}
-
 function renderLivingLines(lines, fixedCat) {
   const opts = livingCategoryOptions(fixedCat);
   return lines.map((ln, i) => {
@@ -857,14 +966,16 @@ function renderDetailPanel(person, it) {
       ? addOpts.map((o) => `<option value="${escAttr(o)}">${escAttr(o)}</option>`).join('')
       : '<option value="" disabled>추가할 항목 없음</option>';
     return `<div class="item-details living-budget-details" data-person="${person}" data-id="${it.id}" data-type="living" hidden>
-      <div class="detail-head">📋 생활비 상세 (분류별)</div>
-      <div class="living-budget-body detail-body">${renderLivingBudgetLines(detail.lines)}</div>
+      <div class="detail-head">📋 생활비 상세</div>
+      ${renderLivingBudgetTable(detail.lines)}
       <div class="detail-foot living-budget-foot">
-        <div class="living-budget-add">
+        <div class="living-budget-add-row">
           <select class="lb-cat-pick"${addOpts.length ? '' : ' disabled'}>${pickOpts}</select>
-          <button type="button" class="detail-add living-budget-add-btn" data-person="${person}" data-id="${it.id}"${addOpts.length ? '' : ' disabled'}>+ 항목 추가</button>
+          <input type="text" class="lb-note-custom" placeholder="비고 (선택)">
+          <input type="text" class="lb-plan-custom me-plan" placeholder="계획" inputmode="numeric">
+          <button type="button" class="detail-add living-budget-add-btn" data-person="${person}" data-id="${it.id}"${addOpts.length ? '' : ' disabled'}>+ 추가</button>
         </div>
-        <div class="detail-total"><span>합계</span><span class="dt-val">${fmt(total)}</span></div>
+        <div class="detail-total"><span>실제 합계</span><span class="dt-val">${fmt(total)}</span></div>
       </div>
     </div>`;
   }
@@ -907,9 +1018,11 @@ function readDetailFromWrap(detailsEl) {
   const type = detailsEl.dataset.type;
   const it = getCheckItemDef(detailsEl.dataset.person, detailsEl.dataset.id);
   if (it?.livingBudget) {
-    const lines = [...detailsEl.querySelectorAll('.living-budget-line')].map((row) => ({
-      category: row.querySelector('.dl-category')?.value || '',
-      plan: Number(row.querySelector('.dl-plan')?.value) || 0,
+    const lines = [...detailsEl.querySelectorAll('.lb-row')].map((row) => ({
+      slotId: row.dataset.slotId || undefined,
+      category: row.querySelector('.lb-category-select')?.value || '',
+      note: row.querySelector('.lb-note')?.value || '',
+      plan: parseActualInput(row.querySelector('.lb-plan')?.value || ''),
       amount: parseActualInput(row.querySelector('.ci-actual')?.value || ''),
     }));
     return { type: 'living', lines };
@@ -933,16 +1046,22 @@ function readDetailFromWrap(detailsEl) {
 function syncDetailToStore(detailsEl) {
   const person = detailsEl.dataset.person;
   const id = detailsEl.dataset.id;
+  const it = getCheckItemDef(person, id);
   const detail = readDetailFromWrap(detailsEl);
   budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
   const total = sumDetailAmount(detail);
   const dtVal = detailsEl.querySelector('.dt-val');
   if (dtVal) dtVal.textContent = fmt(total);
   const wrap = detailsEl.closest('.check-item-wrap');
-  const actualInp = wrap?.querySelector('.ci-actual');
+  const actualInp = wrap?.querySelector('.ci-actual-sum, :scope > .check-item > .ci-actual');
   if (actualInp) {
     actualInp.value = total ? formatActualInput(total) : '';
     budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, person, id, total || '');
+  }
+  if (it?.livingBudget) {
+    const planTotal = sumLivingBudgetPlan(detail);
+    const mainPlan = wrap?.querySelector(':scope > .check-item > .ci-plan');
+    if (mainPlan) mainPlan.innerHTML = `<span>계획</span>${planTotal ? fmtShort(planTotal) : '—'}`;
   }
   updateWalletSummaries();
   scheduleSave();
@@ -1261,13 +1380,22 @@ function attachTrackerEvents() {
         const pick = detailsEl.querySelector('.lb-cat-pick');
         const cat = pick?.value;
         if (!cat) return;
-        detail.lines.push({ category: cat, plan: 0, amount: '' });
+        const noteInp = detailsEl.querySelector('.lb-note-custom');
+        const planInp = detailsEl.querySelector('.lb-plan-custom');
+        const newLine = {
+          category: cat,
+          plan: parseActualInput(planInp?.value || '') || 0,
+          amount: '',
+          note: noteInp?.value?.trim() || '',
+        };
+        detail.lines.push(newLine);
         budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
-        renderTracker();
-        attachTrackerEvents();
-        const wrap = section.querySelector(`.check-item-wrap[data-person="${person}"][data-id="${id}"]`);
-        wrap?.classList.add('detail-open');
-        wrap?.querySelector('.item-details')?.removeAttribute('hidden');
+        const body = detailsEl.querySelector('.living-budget-body');
+        body.insertAdjacentHTML('beforeend', renderLivingBudgetLine(newLine, detail.lines.length - 1));
+        if (pick.options.length) pick.selectedIndex = 0;
+        if (noteInp) noteInp.value = '';
+        if (planInp) planInp.value = '';
+        syncDetailToStore(detailsEl);
         return;
       }
       if (it.detailType === 'invest') {
@@ -1281,20 +1409,23 @@ function attachTrackerEvents() {
       scheduleSave();
       return;
     }
-    const rmBtn = e.target.closest('.dl-remove');
+    const rmBtn = e.target.closest('.lb-remove');
     if (rmBtn) {
       e.preventDefault();
       const detailsEl = rmBtn.closest('.item-details');
-      if (detailsEl.dataset.type === 'living' && detailsEl.classList.contains('living-budget-details')) {
-        const body = detailsEl.querySelector('.living-budget-body');
-        if (body.querySelectorAll('.living-budget-line').length <= 1) return;
-        rmBtn.closest('.living-budget-line').remove();
-        syncDetailToStore(detailsEl);
-        return;
-      }
+      const line = rmBtn.closest('.lb-row');
+      if (line?.dataset.slotId) return;
+      line?.remove();
+      syncDetailToStore(detailsEl);
+      return;
+    }
+    const rmDetailBtn = e.target.closest('.dl-remove');
+    if (rmDetailBtn) {
+      e.preventDefault();
+      const detailsEl = rmDetailBtn.closest('.item-details');
       const body = detailsEl.querySelector('.detail-body');
       if (body.querySelectorAll('.detail-line').length <= 1) return;
-      rmBtn.closest('.detail-line').remove();
+      rmDetailBtn.closest('.detail-line').remove();
       syncDetailToStore(detailsEl);
     }
   };
@@ -1326,6 +1457,14 @@ function attachTrackerEvents() {
       scheduleSave();
       return;
     }
+    const lbCatSel = e.target.closest('.lb-category-select');
+    if (lbCatSel) {
+      const row = lbCatSel.closest('.lb-row');
+      const iconEl = row?.querySelector('.lb-cat-icon');
+      if (iconEl) iconEl.textContent = livingBudgetCatIcon(lbCatSel.value);
+      syncDetailToStore(lbCatSel.closest('.item-details'));
+      return;
+    }
     const detailsEl = e.target.closest('.item-details');
     if (detailsEl) syncDetailToStore(detailsEl);
   };
@@ -1342,7 +1481,7 @@ function attachTrackerEvents() {
       return;
     }
     const mePlan = e.target.closest('.me-plan');
-    if (mePlan) {
+    if (mePlan && !mePlan.closest('.living-budget-details')) {
       patchMonthlyLine(mePlan.dataset.person, mePlan.dataset.extraId, { plan: parseActualInput(mePlan.value) });
       updateWalletSummaries();
       return;
@@ -1387,8 +1526,15 @@ function attachTrackerEvents() {
   };
 
   section.addEventListener('blur', e => {
+    const lbPlan = e.target.closest('.lb-plan');
+    if (lbPlan?.closest('.living-budget-details')) {
+      const n = parseActualInput(lbPlan.value);
+      lbPlan.value = n ? formatActualInput(n) : '';
+      syncDetailToStore(lbPlan.closest('.item-details'));
+      return;
+    }
     const mePlan = e.target.closest('.me-plan');
-    if (mePlan) {
+    if (mePlan && !mePlan.closest('.living-budget-details')) {
       const lines = getMonthlyExtraLines(mePlan.dataset.person);
       const ln = lines.find(l => l.id === mePlan.dataset.extraId);
       const n = ln?.plan !== '' && ln?.plan != null ? Number(ln.plan) : '';
@@ -1487,18 +1633,20 @@ function renderTracker() {
     </div>
     ${sbHint}`;
 
-  document.getElementById('year-tabs').onclick = e => {
+  document.getElementById('year-tabs').onclick = async e => {
     const btn = e.target.closest('[data-year]');
     if (!btn) return;
+    await flushSave();
     trackerYear = +btn.dataset.year;
     forecastYear = trackerYear;
     renderTracker();
     attachTrackerEvents();
   };
 
-  document.getElementById('month-tabs').onclick = e => {
+  document.getElementById('month-tabs').onclick = async e => {
     const btn = e.target.closest('[data-month]');
     if (!btn) return;
+    await flushSave();
     trackerMonth = btn.dataset.month;
     renderTracker();
     attachTrackerEvents();
@@ -1787,12 +1935,13 @@ renderWilliam();
 renderLivingBudget();
 renderForecast();
 
-const store = await initStore((remote) => {
-  budgetChecks = remote;
-  renderTracker();
-  renderForecast();
+window.addEventListener('beforeunload', () => {
+  persistChecksLocal(budgetChecks);
 });
+
+const store = await initStore(applyRemoteChecks);
 storeMode = store.mode;
+lastCloudJson = checksJson(budgetChecks);
 renderTracker();
 </script>
 </body>
