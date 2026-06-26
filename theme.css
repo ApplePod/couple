@@ -1938,35 +1938,88 @@
       margin-top: 10px;
       flex-wrap: wrap;
     }
-    .pf-trade-tabs {
+    .pf-trade-bar {
       display: flex;
-      gap: 6px;
-      margin: 10px 0 8px;
+      gap: 8px;
+      align-items: center;
+      margin: 10px 0 0;
+      flex-wrap: wrap;
     }
-    .pf-trade-tab {
-      flex: 1;
-      padding: 8px 10px;
+    .pf-trade-toggle {
+      padding: 8px 12px;
       border-radius: 8px;
       font-family: inherit;
-      font-size: .74rem;
-      font-weight: 700;
+      font-size: .76rem;
+      font-weight: 600;
       cursor: pointer;
-      border: 1px solid var(--border);
       background: #fff;
-      color: var(--muted);
+      color: var(--text);
+      transition: border-color .15s, background .15s;
     }
-    .pf-trade-tab:hover { border-color: var(--main); color: var(--text); }
-    .pf-trade-tab.active[data-trade-tab="buy"] {
-      border-color: var(--yj);
-      background: var(--yj-glow);
+    .pf-trade-toggle.buy {
+      border: 1.5px solid var(--yj);
       color: var(--yj);
     }
-    .pf-trade-tab.active[data-trade-tab="sell"] {
-      border-color: var(--red);
-      background: var(--red-dim);
+    .pf-trade-toggle.sell {
+      border: 1.5px solid var(--red);
       color: var(--red);
     }
-    .pf-trade-panel { margin-bottom: 4px; }
+    .pf-trade-toggle.buy.is-open {
+      background: var(--yj-glow);
+    }
+    .pf-trade-toggle.sell.is-open {
+      background: var(--red-dim);
+    }
+    .pf-trade-bar .pf-remove-pos {
+      margin-left: auto;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .76rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px dashed rgba(224,82,82,.25);
+      background: #fff;
+      color: var(--red);
+    }
+    .pf-trade-bar .pf-remove-pos:hover {
+      border-color: var(--red);
+      background: var(--red-dim);
+    }
+    .pf-trade-drop {
+      margin-top: 8px;
+      padding-bottom: 4px;
+    }
+    .pf-trade-drop.buy {
+      border-left: 2px solid var(--yj);
+      padding-left: 10px;
+    }
+    .pf-trade-drop.sell {
+      border-left: 2px solid var(--red);
+      padding-left: 10px;
+    }
+    .pf-trade-drop .pf-add-lot,
+    .pf-trade-drop .pf-add-sell {
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .76rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+    }
+    .pf-trade-drop .pf-add-lot {
+      border: 1px dashed var(--yj);
+      color: var(--yj);
+    }
+    .pf-trade-drop .pf-add-sell {
+      border: 1px dashed var(--red);
+      color: var(--red);
+    }
+    .pf-trade-drop .pf-add-lot:hover { background: var(--yj-glow); }
+    .pf-trade-drop .pf-add-sell:hover { background: var(--red-dim); }
     .pf-sell-empty td {
       text-align: center;
       color: var(--muted);

@@ -34,8 +34,13 @@ let saveTimer = null;
 let cloudSaveInFlight = false;
 let lastCloudJson = JSON.stringify(portfolioData);
 const expandedIds = new Set();
-/** @type {Map<string, 'buy'|'sell'>} */
-const tradeTabByPos = new Map();
+/** @type {Map<string, Set<'buy'|'sell'>>} */
+const tradeOpenByPos = new Map();
+
+function tradeOpenSet(posId) {
+  if (!tradeOpenByPos.has(posId)) tradeOpenByPos.set(posId, new Set());
+  return tradeOpenByPos.get(posId);
+}
 
 function pfJson(d) {
   return JSON.stringify(d);
@@ -140,7 +145,8 @@ function renderPosition(person, pos, renderSymbolInput) {
     ? `<span class="pf-code">${esc(pos.code)}</span><span class="pf-market">${esc(pos.market || "")}</span>`
     : "";
   const pnlClass = stats.realizedPnl > 0 ? "gain" : stats.realizedPnl < 0 ? "loss" : "";
-  const tradeTab = tradeTabByPos.get(pos.id) || "buy";
+  const openBuy = tradeOpenSet(pos.id).has("buy");
+  const openSell = tradeOpenSet(pos.id).has("sell");
 
   return `<div class="pf-position${open ? " is-open" : ""}" data-person="${person}" data-pos-id="${esc(pos.id)}">
     <button type="button" class="pf-pos-head" aria-expanded="${open}">
@@ -164,30 +170,28 @@ function renderPosition(person, pos, renderSymbolInput) {
         <input type="hidden" class="pf-market-inp" value="${esc(pos.market || "")}">
       </div>
       ${`<p class="pf-warn"${stats.overSold ? "" : " hidden"}>매도 수량이 매수 합계를 초과했습니다.</p>`}
-      <div class="pf-trade-tabs">
-        <button type="button" class="pf-trade-tab${tradeTab === "buy" ? " active" : ""}" data-trade-tab="buy">매수 내역</button>
-        <button type="button" class="pf-trade-tab${tradeTab === "sell" ? " active" : ""}" data-trade-tab="sell">매도 내역</button>
+      <div class="pf-trade-bar">
+        <button type="button" class="pf-trade-toggle buy${openBuy ? " is-open" : ""}" data-trade-toggle="buy" aria-expanded="${openBuy}">+ 매수 내역</button>
+        <button type="button" class="pf-trade-toggle sell${openSell ? " is-open" : ""}" data-trade-toggle="sell" aria-expanded="${openSell}">+ 매도 내역</button>
+        <button type="button" class="pf-remove-pos" data-person="${person}" data-pos-id="${esc(pos.id)}">종목 삭제</button>
       </div>
-      <div class="pf-trade-panel pf-trade-buy"${tradeTab === "buy" ? "" : " hidden"}>
+      <div class="pf-trade-drop buy"${openBuy ? "" : " hidden"}>
         <table class="pf-lot-table">
           <thead>
             <tr><th>증권사</th><th>매수일</th><th>단가</th><th>수량</th><th>합계</th><th></th></tr>
           </thead>
           <tbody>${lots.map((lot, i) => renderLotRow(person, pos.id, lot, i)).join("")}</tbody>
         </table>
+        <button type="button" class="pf-add-lot" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매수 내역</button>
       </div>
-      <div class="pf-trade-panel pf-trade-sell"${tradeTab === "sell" ? "" : " hidden"}>
+      <div class="pf-trade-drop sell"${openSell ? "" : " hidden"}>
         <table class="pf-lot-table pf-sell-table">
           <thead>
             <tr><th>증권사</th><th>매도일</th><th>단가</th><th>수량</th><th>합계</th><th></th></tr>
           </thead>
           <tbody>${sells.length ? sells.map((sell, i) => renderSellRow(person, pos.id, sell, i)).join("") : '<tr class="pf-sell-empty"><td colspan="6">매도 내역 없음</td></tr>'}</tbody>
         </table>
-      </div>
-      <div class="pf-pos-actions">
-        <button type="button" class="pf-add-lot"${tradeTab === "buy" ? "" : " hidden"} data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매수 내역</button>
-        <button type="button" class="pf-add-sell"${tradeTab === "sell" ? "" : " hidden"} data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매도 내역</button>
-        <button type="button" class="pf-remove-pos" data-person="${person}" data-pos-id="${esc(pos.id)}">종목 삭제</button>
+        <button type="button" class="pf-add-sell" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매도 내역</button>
       </div>
     </div>
   </div>`;
@@ -355,17 +359,27 @@ export function renderPortfolioPage(renderSymbolInput) {
   attachSymbolAutocomplete(section);
 }
 
-function switchTradeTab(posEl, tab) {
+function syncTradePanels(posEl) {
   const posId = posEl?.dataset.posId;
   if (!posId) return;
-  tradeTabByPos.set(posId, tab);
-  posEl.querySelectorAll(".pf-trade-tab").forEach((b) => {
-    b.classList.toggle("active", b.dataset.tradeTab === tab);
-  });
-  posEl.querySelector(".pf-trade-buy")?.toggleAttribute("hidden", tab !== "buy");
-  posEl.querySelector(".pf-trade-sell")?.toggleAttribute("hidden", tab !== "sell");
-  posEl.querySelector(".pf-add-lot")?.toggleAttribute("hidden", tab !== "buy");
-  posEl.querySelector(".pf-add-sell")?.toggleAttribute("hidden", tab !== "sell");
+  const open = tradeOpenByPos.get(posId) || new Set();
+  posEl.querySelector(".pf-trade-drop.buy")?.toggleAttribute("hidden", !open.has("buy"));
+  posEl.querySelector(".pf-trade-drop.sell")?.toggleAttribute("hidden", !open.has("sell"));
+  const buyBtn = posEl.querySelector('.pf-trade-toggle[data-trade-toggle="buy"]');
+  const sellBtn = posEl.querySelector('.pf-trade-toggle[data-trade-toggle="sell"]');
+  buyBtn?.classList.toggle("is-open", open.has("buy"));
+  sellBtn?.classList.toggle("is-open", open.has("sell"));
+  buyBtn?.setAttribute("aria-expanded", String(open.has("buy")));
+  sellBtn?.setAttribute("aria-expanded", String(open.has("sell")));
+}
+
+function toggleTradeSection(posEl, kind) {
+  const posId = posEl?.dataset.posId;
+  if (!posId) return;
+  const open = tradeOpenSet(posId);
+  if (open.has(kind)) open.delete(kind);
+  else open.add(kind);
+  syncTradePanels(posEl);
 }
 
 function attachPortfolioEvents(section, renderSymbolInput) {
@@ -386,10 +400,10 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       return;
     }
 
-    const tradeTab = e.target.closest(".pf-trade-tab");
-    if (tradeTab) {
-      const posEl = tradeTab.closest(".pf-position");
-      switchTradeTab(posEl, tradeTab.dataset.tradeTab);
+    const tradeToggle = e.target.closest(".pf-trade-toggle");
+    if (tradeToggle) {
+      const posEl = tradeToggle.closest(".pf-position");
+      toggleTradeSection(posEl, tradeToggle.dataset.tradeToggle);
       return;
     }
 
@@ -420,7 +434,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       if (!pos) return;
       pos.lots.push({ id: uid("lot"), broker: BROKERS[0], date: "", price: "", shares: "" });
       expandedIds.add(posId);
-      tradeTabByPos.set(posId, "buy");
+      tradeOpenSet(posId).add("buy");
       persistPortfolioLocal(portfolioData);
       schedulePortfolioSave();
       renderPortfolioPage(renderSymbolInput);
@@ -436,7 +450,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       if (!pos.sells) pos.sells = [];
       pos.sells.push({ id: uid("sell"), broker: BROKERS[0], date: "", price: "", shares: "" });
       expandedIds.add(posId);
-      tradeTabByPos.set(posId, "sell");
+      tradeOpenSet(posId).add("sell");
       persistPortfolioLocal(portfolioData);
       schedulePortfolioSave();
       renderPortfolioPage(renderSymbolInput);
@@ -449,7 +463,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       const posId = rmPos.dataset.posId;
       portfolioData[person].positions = portfolioData[person].positions.filter((p) => p.id !== posId);
       expandedIds.delete(posId);
-      tradeTabByPos.delete(posId);
+      tradeOpenByPos.delete(posId);
       persistPortfolioLocal(portfolioData);
       schedulePortfolioSave();
       renderPortfolioPage(renderSymbolInput);
@@ -463,7 +477,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       row?.remove();
       if (posEl) {
         if (!posEl.querySelectorAll(".pf-lot").length) {
-          const tbody = posEl.querySelector(".pf-trade-buy .pf-lot-table tbody");
+          const tbody = posEl.querySelector(".pf-trade-drop.buy .pf-lot-table tbody");
           const person = posEl.dataset.person;
           const posId = posEl.dataset.posId;
           const pos = portfolioData[person]?.positions?.find((p) => p.id === posId);
