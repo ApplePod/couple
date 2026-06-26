@@ -422,6 +422,21 @@ const LIVING_PRESETS = {
   comfort: [420000, 180000, 120000, 80000,  60000, 50000, 50000],
 };
 
+/** 시온 체크리스트 — 계획 탭 생활비 배분 항목과 동일 */
+const SN_LIVING_BUDGET_ITEMS = LIVING_CATS.map((cat, i) => ({
+  id: cat.id,
+  name: cat.name,
+  note: cat.hint,
+  amt: LIVING_PRESETS.normal[i],
+  auto: false,
+  detailType: 'living',
+  livingFixedCat: cat.name,
+}));
+
+function getPersonCheckDefs(person) {
+  return person === 'yj' ? YJ_CHECK_ITEMS : [...SN_CHECK_ITEMS, ...SN_LIVING_BUDGET_ITEMS];
+}
+
 function renderLivingBudget() {
   const remaining = getSnRemaining();
 
@@ -542,7 +557,7 @@ function scheduleSave() {
 }
 
 function getVisibleItems(person) {
-  const items = person === 'yj' ? YJ_CHECK_ITEMS : SN_CHECK_ITEMS;
+  const items = getPersonCheckDefs(person);
   const hidden = new Set(getHiddenItems(budgetChecks, trackerYear, trackerMonth, person));
   return items.filter(it => !it.forecastOnly && (!it.julyOnly || trackerMonth === '7') && !hidden.has(it.id));
 }
@@ -809,8 +824,7 @@ function renderDetailPanel(person, it) {
 }
 
 function getCheckItemDef(person, id) {
-  const items = person === 'yj' ? YJ_CHECK_ITEMS : SN_CHECK_ITEMS;
-  return items.find(x => x.id === id);
+  return getPersonCheckDefs(person).find(x => x.id === id);
 }
 
 function readDetailFromWrap(detailsEl) {
@@ -1003,8 +1017,15 @@ function renderCheckColumn(person, items, colorClass) {
   const monthlyExtra = getMonthlyExtraLines(person);
   const w = calcPersonWallet(person);
 
-  const monthlyRows = monthly.map(it => renderCheckRow(person, it)).join('');
+  const coreMonthly = monthly.filter((it) => it.detailType !== 'living');
+  const livingMonthly = monthly.filter((it) => it.detailType === 'living');
+  const monthlyRows = coreMonthly.map((it) => renderCheckRow(person, it)).join('');
+  const livingRows = livingMonthly.map((it) => renderCheckRow(person, it)).join('');
   const monthlyExtraRows = monthlyExtra.map(ln => renderMonthlyExtraRow(person, ln)).join('');
+  const livingSection = livingMonthly.length
+    ? `<div class="check-section-label living">🛒 생활비</div>
+    <div class="check-list living-check-list" data-person="${person}">${livingRows}</div>`
+    : '';
   const hidden = getHiddenItems(budgetChecks, trackerYear, trackerMonth, person);
   const hiddenNote = hidden.length
     ? `<button type="button" class="hidden-restore-btn tracker-edit-only" data-person="${person}">숨긴 항목 ${hidden.length}개 되돌리기</button>` : '';
@@ -1026,6 +1047,7 @@ function renderCheckColumn(person, items, colorClass) {
     <div class="check-section-label">📅 월급에서 (실수령 기준)</div>
     <div class="check-list monthly-check-list" data-person="${person}">${monthlyRows}${monthlyExtraRows}</div>
     <button type="button" class="monthly-add-btn tracker-edit-only" data-person="${person}">+ 월급 항목 추가</button>
+    ${livingSection}
     ${hiddenNote}
     ${renderSavingsExtraSection(person)}
   </div>`;

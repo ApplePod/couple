@@ -956,6 +956,7 @@
       border-bottom: 1px solid var(--border);
     }
     .check-section-label.savings { color: var(--amber); border-color: rgba(251,191,36,.25); }
+    .check-section-label.living { color: var(--sn); border-color: rgba(249,143,117,.25); margin-top: 16px; }
     .savings-wallet {
       padding: 12px 14px; border-radius: var(--radius-sm);
       background: var(--amber-dim); border: 1px solid rgba(251,191,36,.2);
