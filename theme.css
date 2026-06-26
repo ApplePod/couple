@@ -1905,31 +1905,49 @@
     }
     .pf-market { font-size: .62rem; color: var(--muted); }
     .pf-pos-head-stats {
-      display: none;
-      gap: 10px;
-      font-size: .68rem;
+      display: flex;
+      gap: 8px;
+      font-size: .65rem;
       color: var(--muted);
+      flex-shrink: 0;
     }
-    .pf-pos-head-stats em {
-      font-style: normal;
-      display: block;
-      font-size: .58rem;
-      opacity: .8;
-    }
-    .pf-position.is-open .pf-pos-head-stats { display: flex; }
     .pf-chevron {
       width: 8px;
       height: 8px;
       border-right: 2px solid var(--muted);
       border-bottom: 2px solid var(--muted);
       transform: rotate(45deg);
-      transition: transform .15s;
+      transition: transform 0.22s ease;
       flex-shrink: 0;
     }
     .pf-position.is-open .pf-chevron { transform: rotate(-135deg); }
     .pf-pos-body {
-      padding: 0 10px 10px;
-      border-top: 1px dashed var(--border);
+      display: grid;
+      grid-template-rows: 0fr;
+      padding: 0 10px;
+      border-top: 1px solid transparent;
+      transition: grid-template-rows 0.28s ease, border-color 0.2s ease;
+    }
+    .pf-position.is-open .pf-pos-body {
+      grid-template-rows: 1fr;
+      border-top-color: var(--border);
+    }
+    .pf-pos-body-inner {
+      min-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+    .pf-position.is-open .pf-pos-body-inner {
+      opacity: 1;
+      padding: 8px 0 10px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pf-pos-body,
+      .pf-pos-body-inner,
+      .pf-chevron {
+        transition: none;
+      }
     }
     .pf-symbol-edit {
       padding: 8px 0 6px;
@@ -2157,9 +2175,6 @@
       background: rgba(255,248,245,.6);
     }
     .pf-col.yj .pf-add-pos:hover { border-color: var(--yj); color: var(--yj); }
-    @media (min-width: 701px) {
-      .pf-pos-head-stats { display: flex; }
-    }
     @media (max-width: 700px) {
       .pf-household-grid { grid-template-columns: 1fr; }
       .pf-dual { grid-template-columns: 1fr; }

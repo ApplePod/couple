@@ -246,7 +246,8 @@ function renderPosition(person, pos, renderSymbolInput) {
       </div>
       <span class="pf-chevron" aria-hidden="true"></span>
     </button>
-    <div class="pf-pos-body"${open ? "" : " hidden"}>
+    <div class="pf-pos-body">
+      <div class="pf-pos-body-inner">
       <div class="pf-symbol-edit">
         <label>종목</label>
         ${renderSymbolInput(pos.symbol)}
@@ -262,6 +263,7 @@ function renderPosition(person, pos, renderSymbolInput) {
         <button type="button" class="pf-add-lot pf-trade-btn buy" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매수 내역</button>
         <button type="button" class="pf-add-sell pf-trade-btn sell" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매도 내역</button>
         <button type="button" class="pf-remove-pos pf-edit-only" data-person="${person}" data-pos-id="${esc(pos.id)}">종목 삭제</button>
+      </div>
       </div>
     </div>
   </div>`;
@@ -444,6 +446,19 @@ export function renderPortfolioPage(renderSymbolInput) {
   attachSymbolAutocomplete(section);
 }
 
+function togglePositionOpen(pos, open) {
+  if (!pos) return;
+  const head = pos.querySelector(".pf-pos-head");
+  const shouldOpen = open ?? !pos.classList.contains("is-open");
+  pos.classList.toggle("is-open", shouldOpen);
+  head?.setAttribute("aria-expanded", String(shouldOpen));
+  const id = pos.dataset.posId;
+  if (id) {
+    if (shouldOpen) expandedIds.add(id);
+    else expandedIds.delete(id);
+  }
+}
+
 function attachPortfolioEvents(section, renderSymbolInput) {
   if (section._pfAttached) return;
   section._pfAttached = true;
@@ -452,13 +467,8 @@ function attachPortfolioEvents(section, renderSymbolInput) {
     const head = e.target.closest(".pf-pos-head");
     if (head && !e.target.closest(".pf-pos-body")) {
       const pos = head.closest(".pf-position");
-      const id = pos?.dataset.posId;
-      if (!id) return;
-      const open = pos.classList.toggle("is-open");
-      head.setAttribute("aria-expanded", String(open));
-      pos.querySelector(".pf-pos-body")?.toggleAttribute("hidden", !open);
-      if (open) expandedIds.add(id);
-      else expandedIds.delete(id);
+      if (!pos?.dataset.posId) return;
+      togglePositionOpen(pos);
       return;
     }
 
