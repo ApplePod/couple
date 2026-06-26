@@ -323,6 +323,8 @@ function marketBadgeHtml(market) {
   else if (m === "ETF") kind = "etf";
   return `<span class="pf-market-badge ${kind}">${esc(label)}</span>`;
 }
+
+function formatPnl(n) {
   if (!n && n !== 0) return "—";
   const sign = n > 0 ? "+" : "";
   return `${sign}${Math.round(n).toLocaleString("ko-KR")}원`;
