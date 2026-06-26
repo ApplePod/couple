@@ -59,7 +59,7 @@
 <script src="supabase-config.js"></script>
 <script type="module">
 import { initSymbolSearch, attachSymbolAutocomplete, renderSymbolInput } from './symbol-search.js';
-import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
+import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, fetchRemoteChecks, mergeChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
 import {
   INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
   aggregateActualInvestments, aggregateProjectedInvestments,
@@ -203,6 +203,8 @@ let saveTimer = null;
 let cloudSaveInFlight = false;
 let lastCloudJson = JSON.stringify(loadChecks());
 let storeMode = 'local';
+let remoteChangedWhileEditing = false;
+let pollTimer = null;
 let trackerEditMode = { yj: false, sn: false };
 
 function sum(items) { return items.reduce((s, i) => s + i.amt, 0); }
@@ -671,6 +673,47 @@ function setSaveStatus(res) {
   else setSyncStatus('error', '저장 실패 — 로컬만');
 }
 
+function isTrackerInputFocused() {
+  const el = document.activeElement;
+  return el && el.closest('#tracker-section') && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+}
+
+function syncFocusedInputs() {
+  const el = document.activeElement;
+  if (!el?.closest('#tracker-section')) return;
+  if (el.matches('.ci-actual:not(.ci-actual-sum)')) {
+    const livingDetail = el.closest('.living-budget-details');
+    if (livingDetail) {
+      syncDetailToStore(livingDetail);
+      return;
+    }
+    budgetChecks = setActual(
+      budgetChecks, trackerYear, trackerMonth,
+      el.dataset.person, el.dataset.id, parseActualInput(el.value)
+    );
+    return;
+  }
+  if (el.matches('.me-actual')) {
+    patchMonthlyLine(el.dataset.person, el.dataset.extraId, { actual: parseActualInput(el.value) });
+    return;
+  }
+  if (el.matches('.se-actual')) {
+    patchSavingsLine(el.dataset.person, el.dataset.savId, { actual: parseActualInput(el.value) });
+    return;
+  }
+  const detailsEl = el.closest('.item-details');
+  if (detailsEl) syncDetailToStore(detailsEl);
+}
+
+function flushPendingDetailSaves() {
+  document.querySelectorAll('#tracker-section .item-details').forEach((el) => {
+    if (!el._detailTimer) return;
+    clearTimeout(el._detailTimer);
+    el._detailTimer = null;
+    syncDetailToStore(el);
+  });
+}
+
 async function flushCloudSave() {
   if (!hasUnsyncedCloudEdits()) {
     if (storeMode === 'supabase') setSyncStatus('supabase', 'Supabase 저장됨');
@@ -678,9 +721,13 @@ async function flushCloudSave() {
     return;
   }
   cloudSaveInFlight = true;
+  const snapshot = checksJson(budgetChecks);
   const res = await saveChecksToCloud(budgetChecks);
   cloudSaveInFlight = false;
-  if (res.ok) lastCloudJson = checksJson(budgetChecks);
+  if (res.ok) {
+    if (checksJson(budgetChecks) === snapshot) lastCloudJson = snapshot;
+    else scheduleSave();
+  }
   setSaveStatus(res);
 }
 
@@ -692,6 +739,8 @@ function scheduleSave() {
 }
 
 async function flushSave() {
+  syncFocusedInputs();
+  flushPendingDetailSaves();
   persistChecksLocal(budgetChecks);
   clearTimeout(saveTimer);
   saveTimer = null;
@@ -700,15 +749,48 @@ async function flushSave() {
 
 function applyRemoteChecks(remote, meta = {}) {
   const remoteJson = checksJson(remote);
-  if (meta.source === 'realtime') {
-    if (hasUnsyncedCloudEdits() || cloudSaveInFlight) return;
-    if (remoteJson === checksJson(budgetChecks) || remoteJson === lastCloudJson) return;
+  if (remoteJson === checksJson(budgetChecks)) {
+    lastCloudJson = remoteJson;
+    return;
   }
-  budgetChecks = remote;
+  if (remoteJson === lastCloudJson && !hasUnsyncedCloudEdits()) return;
+
+  const base = JSON.parse(lastCloudJson || '{}');
+  const merged = hasUnsyncedCloudEdits() || cloudSaveInFlight
+    ? mergeChecks(base, budgetChecks, remote)
+    : remote;
+
+  if (checksJson(merged) === checksJson(budgetChecks)) {
+    lastCloudJson = remoteJson;
+    return;
+  }
+
+  budgetChecks = merged;
+  persistChecksLocal(merged);
   lastCloudJson = remoteJson;
-  persistChecksLocal(remote);
+
+  if (isTrackerInputFocused()) {
+    remoteChangedWhileEditing = true;
+    updateWalletSummaries();
+    setSyncStatus('supabase', '상대방 입력 반영됨');
+    scheduleSave();
+    return;
+  }
+
   renderTracker();
   renderForecast();
+  if (hasUnsyncedCloudEdits()) scheduleSave();
+  else if (storeMode === 'supabase') setSyncStatus('supabase', '동기화됨');
+}
+
+function startRemotePolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  if (storeMode !== 'supabase') return;
+  pollTimer = setInterval(async () => {
+    if (cloudSaveInFlight) return;
+    const remote = await fetchRemoteChecks();
+    if (remote) applyRemoteChecks(remote, { source: 'poll' });
+  }, 3000);
 }
 
 function getVisibleItems(person) {
@@ -802,8 +884,8 @@ function calcPersonWallet(person) {
 }
 
 function formatActualInput(val) {
-  if (val === null) return '';
-  return val.toLocaleString('ko-KR');
+  if (val === null || val === undefined || val === '') return '';
+  return Number(val).toLocaleString('ko-KR');
 }
 
 function parseActualInput(str) {
@@ -1600,6 +1682,7 @@ function attachTrackerEvents() {
       const ln = lines.find(l => l.id === meActual.dataset.extraId);
       const n = ln?.actual !== '' && ln?.actual != null ? Number(ln.actual) : '';
       meActual.value = n ? formatActualInput(n) : '';
+      flushSave();
       return;
     }
     const seActual = e.target.closest('.se-actual');
@@ -1608,6 +1691,7 @@ function attachTrackerEvents() {
       const ln = lines.find(l => l.id === seActual.dataset.savId);
       const n = ln?.actual !== '' && ln?.actual != null ? Number(ln.actual) : '';
       seActual.value = n ? formatActualInput(n) : '';
+      flushSave();
       return;
     }
     const inp = e.target.closest('.ci-actual');
@@ -1616,6 +1700,7 @@ function attachTrackerEvents() {
         const n = parseActualInput(inp.value);
         inp.value = n ? formatActualInput(n) : '';
         syncDetailToStore(inp.closest('.item-details'));
+        flushSave();
         return;
       }
       if (inp.classList.contains('ci-actual-sum')) {
@@ -1625,6 +1710,7 @@ function attachTrackerEvents() {
       }
       const actual = getActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id);
       inp.value = formatActualInput(actual);
+      flushSave();
       return;
     }
     const amt = e.target.closest('.dl-amount');
@@ -1644,6 +1730,12 @@ function attachTrackerEvents() {
       syncInvestLineRow(row);
       const detailsEl = priceInp.closest('.item-details');
       if (detailsEl) syncDetailToStore(detailsEl);
+      flushSave();
+      return;
+    }
+    if (e.target.closest('#tracker-section') && remoteChangedWhileEditing) {
+      remoteChangedWhileEditing = false;
+      renderTracker();
     }
   }, true);
 }
@@ -2000,12 +2092,15 @@ renderLivingBudget();
 renderForecast();
 
 window.addEventListener('beforeunload', () => {
+  syncFocusedInputs();
+  flushPendingDetailSaves();
   persistChecksLocal(budgetChecks);
 });
 
 const store = await initStore(applyRemoteChecks);
 storeMode = store.mode;
 lastCloudJson = checksJson(budgetChecks);
+startRemotePolling();
 await initSymbolSearch();
 renderTracker();
 </script>

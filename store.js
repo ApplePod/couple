@@ -53,11 +53,14 @@ export async function initStore(onRemoteChange) {
         localStorage.setItem(LS_KEY, remoteStr);
         onRemoteChange?.(remote, { source: "initial" });
       } else {
-        // 로컬에 미동기화 변경이 있으면 로컬 우선 후 클라우드에 반영
-        console.info("[budget] 로컬·원격 불일치 → 로컬 우선");
-        localStorage.setItem(LS_KEY, localStr);
-        onRemoteChange?.(local, { source: "initial" });
-        saveChecks(local).catch((e) => console.warn("[budget] 로컬 동기화:", e));
+        const merged = mergeChecks(remote, local, remote);
+        const mergedStr = JSON.stringify(merged);
+        console.info("[budget] 로컬·원격 불일치 → 병합");
+        localStorage.setItem(LS_KEY, mergedStr);
+        onRemoteChange?.(merged, { source: "initial" });
+        if (mergedStr !== remoteStr) {
+          saveChecks(merged).catch((e) => console.warn("[budget] 병합 동기화:", e));
+        }
       }
     }
 
@@ -250,4 +253,146 @@ export function setHiddenItems(checks, year, month, person, ids) {
   if (!next[year][month]) next[year][month] = {};
   next[year][month][hiddenItemsKey(person)] = ids;
   return next;
+}
+
+function jsonEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function lineMergeKey(ln, i) {
+  if (ln?.slotId) return `slot:${ln.slotId}`;
+  if (ln?.id) return `id:${ln.id}`;
+  return `i:${i}`;
+}
+
+/** 배열 항목(생활비·월급추가 등) — 로컬·원격 각각 바뀐 필드만 합침 */
+function mergeLineArrays(baseArr, localArr, remoteArr) {
+  const base = baseArr || [];
+  const local = localArr || [];
+  const remote = remoteArr || [];
+  const keys = new Set();
+  for (const arr of [base, local, remote]) {
+    arr.forEach((ln, i) => keys.add(lineMergeKey(ln, i)));
+  }
+  const out = [];
+  for (const key of keys) {
+    const pick = (arr) => {
+      const idx = arr.findIndex((ln, i) => lineMergeKey(ln, i) === key);
+      return idx === -1 ? undefined : arr[idx];
+    };
+    const b = pick(base);
+    const l = pick(local);
+    const r = pick(remote);
+    if (l === undefined && r === undefined) continue;
+    if (l === undefined) {
+      out.push(structuredClone(r));
+      continue;
+    }
+    if (r === undefined) {
+      out.push(structuredClone(l));
+      continue;
+    }
+    const merged = { ...r };
+    for (const k of new Set([...Object.keys(b || {}), ...Object.keys(l), ...Object.keys(r)])) {
+      const lc = !jsonEqual(l[k], b?.[k]);
+      const rc = !jsonEqual(r[k], b?.[k]);
+      if (lc) merged[k] = l[k];
+      else if (rc) merged[k] = r[k];
+    }
+    out.push(merged);
+  }
+  return out;
+}
+
+function mergeMonthBlob(baseMonth, localMonth, remoteMonth) {
+  const base = baseMonth || {};
+  const local = localMonth || {};
+  const remote = remoteMonth || {};
+  const keys = new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(remote)]);
+  const out = { ...remote };
+
+  for (const key of keys) {
+    const b = base[key];
+    const l = local[key];
+    const r = remote[key];
+    const lc = !jsonEqual(l, b);
+    const rc = !jsonEqual(r, b);
+
+    if (key.endsWith("_monthly_extra") || key.endsWith("_savings_extra")) {
+      out[key] = mergeLineArrays(
+        Array.isArray(b) ? b : [],
+        Array.isArray(l) ? l : [],
+        Array.isArray(r) ? r : []
+      );
+      continue;
+    }
+
+    if (key.endsWith("_detail") && (l || r)) {
+      const ld = l && typeof l === "object" ? l : r;
+      const rd = r && typeof r === "object" ? r : l;
+      const bd = b && typeof b === "object" ? b : {};
+      out[key] = {
+        type: ld?.type ?? rd?.type ?? bd?.type,
+        lines: mergeLineArrays(bd?.lines, ld?.lines, rd?.lines),
+      };
+      continue;
+    }
+
+    if (key.endsWith("_hidden_items")) {
+      const la = Array.isArray(l) ? l : [];
+      const ra = Array.isArray(r) ? r : [];
+      out[key] = lc && !rc ? la : rc ? ra : la.length ? la : ra;
+      continue;
+    }
+
+    if (lc && rc) out[key] = l;
+    else if (lc) out[key] = l;
+    else if (rc) out[key] = r;
+    else if (r !== undefined) out[key] = r;
+    else if (l !== undefined) out[key] = l;
+  }
+
+  return out;
+}
+
+/** 마지막 동기화(base) 기준 3-way 병합 — 동시 편집 시 서로 덮어쓰지 않음 */
+export function mergeChecks(base, local, remote) {
+  const b = base || {};
+  const l = local || {};
+  const r = remote || {};
+  const years = new Set([
+    ...Object.keys(b),
+    ...Object.keys(l),
+    ...Object.keys(r),
+  ]);
+  const out = structuredClone(r);
+
+  for (const year of years) {
+    if (!out[year]) out[year] = {};
+    const months = new Set([
+      ...Object.keys(b[year] || {}),
+      ...Object.keys(l[year] || {}),
+      ...Object.keys(r[year] || {}),
+    ]);
+    for (const month of months) {
+      out[year][month] = mergeMonthBlob(b[year]?.[month], l[year]?.[month], r[year]?.[month]);
+    }
+  }
+
+  return out;
+}
+
+export async function fetchRemoteChecks() {
+  if (!supabaseReady || !supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from(table())
+      .select("checks")
+      .eq("id", rowId())
+      .maybeSingle();
+    if (error || !data?.checks) return null;
+    return data.checks;
+  } catch {
+    return null;
+  }
 }
