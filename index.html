@@ -681,7 +681,7 @@ function isTrackerInputFocused() {
 function syncFocusedInputs() {
   const el = document.activeElement;
   if (!el?.closest('#tracker-section')) return;
-  if (el.matches('.ci-actual:not(.ci-actual-sum)')) {
+  if (el.matches('.ci-actual')) {
     const livingDetail = el.closest('.living-budget-details');
     if (livingDetail) {
       syncDetailToStore(livingDetail);
@@ -1193,18 +1193,11 @@ function readDetailFromWrap(detailsEl) {
 function syncDetailToStore(detailsEl) {
   const person = detailsEl.dataset.person;
   const id = detailsEl.dataset.id;
-  const it = getCheckItemDef(person, id);
   const detail = readDetailFromWrap(detailsEl);
   budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
   const total = sumDetailAmount(detail);
   const dtVal = detailsEl.querySelector('.dt-val');
   if (dtVal) dtVal.textContent = fmt(total);
-  const wrap = detailsEl.closest('.check-item-wrap');
-  const actualInp = wrap?.querySelector('.ci-actual-sum, :scope > .check-item > .ci-actual');
-  if (actualInp) {
-    actualInp.value = total ? formatActualInput(total) : '';
-    budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, person, id, total || '');
-  }
   updateWalletSummaries();
   scheduleSave();
 }
@@ -1292,11 +1285,7 @@ function renderCheckRow(person, it) {
   const detailPanel = renderDetailPanel(person, it);
   const hasDetail = !!it.detailType;
   const planAmt = itemPlanAmount(person, it);
-  const actualField = it.livingBudget
-    ? `<input type="text" class="ci-actual ci-actual-sum" data-person="${person}" data-id="${it.id}"
-        placeholder="실제 금액" inputmode="numeric" readonly tabindex="-1"
-        value="${formatActualInput(actual)}">`
-    : `<input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
+  const actualField = `<input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
         placeholder="실제 금액" inputmode="numeric"
         value="${formatActualInput(actual)}">`;
   return `<div class="check-item-wrap${hasDetail ? ' has-detail' : ''}${it.livingBudget ? ' living-budget-wrap' : ''}" data-person="${person}" data-id="${it.id}">
@@ -1669,7 +1658,6 @@ function attachTrackerEvents() {
         livingDetail._detailTimer = setTimeout(() => syncDetailToStore(livingDetail), 400);
         return;
       }
-      if (inp.classList.contains('ci-actual-sum')) return;
       const val = parseActualInput(inp.value);
       budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id, val);
       updateWalletSummaries();
@@ -1727,11 +1715,6 @@ function attachTrackerEvents() {
         inp.value = n ? formatActualInput(n) : '';
         syncDetailToStore(inp.closest('.item-details'));
         flushSave();
-        return;
-      }
-      if (inp.classList.contains('ci-actual-sum')) {
-        const n = getActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id);
-        inp.value = formatActualInput(n);
         return;
       }
       const actual = getActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id);
