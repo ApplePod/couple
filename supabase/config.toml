@@ -1,0 +1,5 @@
+# Supabase local config — Edge Function 배포용
+project_id = "vxiiqsdaadmrbnoteytj"
+
+[functions.portfolio-quotes]
+verify_jwt = false
