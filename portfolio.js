@@ -210,7 +210,7 @@ function renderTradeRow(person, posId, trade) {
     <input type="text" class="pf-price" inputmode="numeric" placeholder="단가" value="${trade.price !== "" && trade.price != null ? Number(trade.price).toLocaleString("ko-KR") : ""}">
     <input type="text" class="pf-shares" inputmode="decimal" placeholder="0" value="${esc(trade.shares ?? "")}">
     <span class="pf-lot-total">${lineTotal ? fmtWon(lineTotal) : "—"}</span>
-    <button type="button" class="ci-row-remove pf-trade-act" title="내역 삭제" aria-label="삭제">×</button>
+    <button type="button" class="pf-row-remove pf-trade-act" title="내역 삭제" aria-label="삭제">×</button>
   </div>`;
 }
 
@@ -546,8 +546,10 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       return;
     }
 
-    const rmTrade = e.target.closest(".pf-trade .ci-row-remove");
+    const rmTrade = e.target.closest(".pf-row-remove");
     if (rmTrade) {
+      const col = rmTrade.closest(".pf-col");
+      if (!col?.classList.contains("edit-mode")) return;
       const row = rmTrade.closest(".pf-trade");
       const posEl = rmTrade.closest(".pf-position");
       row?.remove();

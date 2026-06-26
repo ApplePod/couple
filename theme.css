@@ -1830,25 +1830,29 @@
     .pf-edit-only { display: none !important; }
     .pf-col.edit-mode .pf-edit-only { display: inline-flex !important; }
     .pf-trade-act,
-    .pf-trade-act-h { display: none; }
+    .pf-trade-act-h,
+    .pf-row-remove { display: none; }
     .pf-col.edit-mode .pf-trade-act,
     .pf-col.edit-mode .pf-trade-act-h { display: flex; }
-    .pf-col.edit-mode .pf-trade .ci-row-remove {
+    .pf-col.edit-mode .pf-row-remove {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
+      position: static;
+      transform: none;
+      width: 22px;
+      height: 22px;
       padding: 0;
       border: none;
       background: transparent;
       color: var(--muted);
       cursor: pointer;
-      font-size: .95rem;
+      font-size: 1rem;
       line-height: 1;
       border-radius: 5px;
+      flex-shrink: 0;
     }
-    .pf-col.edit-mode .pf-trade .ci-row-remove:hover {
+    .pf-col.edit-mode .pf-row-remove:hover {
       color: var(--red);
       background: rgba(220, 38, 38, .08);
     }
@@ -2001,6 +2005,7 @@
     .pf-th-shares,
     .pf-th-total { text-align: right; }
     .pf-th-total { padding-right: 2px; }
+    .pf-col.edit-mode .pf-th-total { padding-right: 0; }
     .pf-trade {
       padding: 7px 2px;
       border-bottom: 1px solid rgba(0, 0, 0, .04);
