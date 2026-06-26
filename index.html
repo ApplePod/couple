@@ -506,9 +506,10 @@ function renderLivingBudgetLine(ln, i) {
   const icon = livingBudgetCatIcon(ln.category);
   const slotAttr = ln.slotId ? ` data-slot-id="${escAttr(ln.slotId)}"` : '';
   const removeBtn = ln.slotId
-    ? '<span class="lb-rm-spacer" aria-hidden="true"></span>'
+    ? ''
     : '<button type="button" class="lb-remove" title="삭제" aria-label="삭제">×</button>';
-  return `<div class="lb-row${ln.slotId ? ' is-slot' : ''}" data-idx="${i}"${slotAttr}>
+  return `<div class="lb-row${ln.slotId ? ' is-slot' : ' has-remove'}" data-idx="${i}"${slotAttr}>
+    ${removeBtn}
     <div class="lb-row-grid">
       <div class="lb-field lb-cat-field">
         <span class="lb-lbl">분류</span>
@@ -530,7 +531,6 @@ function renderLivingBudgetLine(ln, i) {
         <input type="text" class="ci-actual" placeholder="실제 금액" inputmode="numeric"
           value="${formatDetailAmt(ln.amount)}">
       </div>
-      <div class="lb-field lb-rm-field">${removeBtn}</div>
     </div>
   </div>`;
 }
@@ -538,7 +538,7 @@ function renderLivingBudgetLine(ln, i) {
 function renderLivingBudgetTable(lines) {
   return `<div class="lb-table">
     <div class="lb-table-head" aria-hidden="true">
-      <span>분류</span><span>비고</span><span>날짜</span><span>실제</span><span></span>
+      <span>분류</span><span>비고</span><span>날짜</span><span>실제</span>
     </div>
     <div class="living-budget-body detail-body">${renderLivingBudgetLines(lines)}</div>
   </div>`;

@@ -492,7 +492,7 @@
       padding: 10px 10px 12px;
       background: linear-gradient(180deg, rgba(255,248,245,.55) 0%, var(--surface2) 100%);
       border-color: rgba(249,143,117,.18);
-      --lb-cols: minmax(0, 1.35fr) minmax(0, 3.2fr) 62px 68px 22px;
+      --lb-cols: minmax(0, 1.25fr) minmax(0, 1fr) 62px 72px;
     }
     .living-budget-details .detail-head {
       padding: 2px 2px 8px;
@@ -509,7 +509,7 @@
       align-items: center;
     }
     .lb-table-head {
-      padding: 0 8px 6px;
+      padding: 0 0 6px;
       font-size: .62rem;
       font-weight: 700;
       letter-spacing: 0.06em;
@@ -521,15 +521,18 @@
     .lb-table-head span:nth-child(4) {
       text-align: center;
     }
-    .lb-table-head span:last-child { visibility: hidden; }
     .living-budget-body { display: flex; flex-direction: column; gap: 8px; }
     .lb-row {
+      position: relative;
       background: #fff;
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 8px;
       box-shadow: 0 1px 3px rgba(0,0,0,.04);
       transition: border-color .15s, box-shadow .15s;
+    }
+    .lb-row.has-remove {
+      padding-right: 30px;
     }
     .lb-row:hover {
       border-color: rgba(249,143,117,.28);
@@ -640,6 +643,9 @@
       box-shadow: 0 0 0 3px var(--sn-glow);
     }
     .lb-remove {
+      position: absolute;
+      top: 8px;
+      right: 8px;
       width: 22px;
       height: 22px;
       padding: 0;
@@ -651,10 +657,9 @@
       font-size: .9rem;
       line-height: 1;
       transition: background .15s, transform .1s;
+      z-index: 1;
     }
     .lb-remove:hover { background: rgba(220,38,38,.15); transform: scale(1.05); }
-    .lb-rm-spacer { display: block; width: 22px; height: 22px; }
-    .lb-rm-field { display: flex; justify-content: center; align-items: center; }
     @media (max-width: 700px) {
       .lb-table-head { display: none; }
       .lb-row-grid {
@@ -662,15 +667,15 @@
         grid-template-areas:
           "cat cat"
           "note note"
-          "date actual"
-          "rm rm";
+          "date actual";
         gap: 8px 10px;
       }
       .lb-cat-field { grid-area: cat; }
       .lb-note-field { grid-area: note; }
       .lb-date-field { grid-area: date; }
       .lb-actual-field { grid-area: actual; }
-      .lb-rm-field { grid-area: rm; justify-content: flex-end; }
+      .lb-row.has-remove { padding-right: 30px; padding-top: 30px; }
+      .lb-row.has-remove .lb-remove { top: 6px; right: 6px; }
       .lb-lbl { display: block; }
     }
     .living-budget-foot {
@@ -680,7 +685,7 @@
     }
     .living-budget-add-row {
       display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(0, 3.2fr) 62px auto;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 62px auto;
       gap: 6px;
       align-items: center;
       width: 100%;
