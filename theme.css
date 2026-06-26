@@ -527,7 +527,6 @@
     .living-budget-body { display: flex; flex-direction: column; gap: 8px; }
     .lb-row {
       position: relative;
-      background: #fff;
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 8px;
@@ -537,13 +536,13 @@
     .lb-row.has-remove {
       padding-right: 30px;
     }
-    .lb-row:hover {
-      border-color: rgba(249,143,117,.28);
-      box-shadow: 0 2px 8px rgba(249,143,117,.08);
-    }
     .lb-row.is-slot {
       border-color: rgba(249,143,117,.2);
       background: linear-gradient(180deg, #fff 0%, rgba(255,248,245,.75) 100%);
+    }
+    .lb-row:hover {
+      border-color: rgba(249,143,117,.28);
+      box-shadow: 0 2px 8px rgba(249,143,117,.08);
     }
     .lb-lbl {
       display: none;
@@ -677,8 +676,8 @@
       .lb-note-field { grid-area: note; }
       .lb-date-field { grid-area: date; }
       .lb-actual-field { grid-area: actual; }
-      .lb-row.has-remove { padding-right: 30px; padding-top: 30px; }
-      .lb-row.has-remove .lb-remove { top: 6px; right: 6px; }
+      .lb-row.has-remove { padding-right: 30px; }
+      .lb-row.has-remove .lb-remove { top: 8px; right: 8px; }
       .lb-lbl { display: block; }
     }
     .living-budget-foot {
@@ -686,57 +685,20 @@
       gap: 10px; margin-top: 12px;
       padding-top: 12px; border-top: 1px dashed rgba(249,143,117,.2);
     }
-    .living-budget-add-row {
-      display: grid;
-      grid-template-columns: minmax(92px, 1.2fr) minmax(0, 2fr) 62px auto;
-      gap: 6px;
-      align-items: center;
+    .living-budget-foot .living-budget-add-btn {
       width: 100%;
-    }
-    @media (max-width: 700px) {
-      .living-budget-add-row {
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas: "pick pick" "note date" "add add";
-      }
-      .living-budget-add-row .lb-cat-pick { grid-area: pick; }
-      .living-budget-add-row .lb-note-custom { grid-area: note; }
-      .living-budget-add-row .lb-date-custom { grid-area: date; }
-      .living-budget-add-row .living-budget-add-btn { grid-area: add; width: 100%; }
-    }
-    .living-budget-add-row .lb-cat-pick,
-    .living-budget-add-row .lb-note-custom {
-      padding: 7px 8px;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: .76rem;
-      color: var(--text);
-      box-sizing: border-box;
-      min-width: 0;
-    }
-    .living-budget-add-row .lb-cat-pick {
-      appearance: none;
-      font-weight: 600;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b93a7' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 6px center;
-      padding-right: 22px;
-    }
-    .living-budget-add-row .living-budget-add-btn {
-      padding: 7px 10px;
+      padding: 9px 12px;
       border: 1px dashed rgba(249,143,117,.45);
       background: rgba(255,248,245,.8);
       color: var(--main);
-      border-radius: 8px;
+      border-radius: 10px;
       font-family: inherit;
       font-size: .78rem;
       font-weight: 700;
       cursor: pointer;
-      white-space: nowrap;
       transition: background .15s, border-color .15s;
     }
-    .living-budget-add-row .living-budget-add-btn:hover:not(:disabled) {
+    .living-budget-foot .living-budget-add-btn:hover {
       background: var(--sn-glow);
       border-color: var(--main);
     }

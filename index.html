@@ -511,7 +511,7 @@ function renderLivingBudgetLine(ln, i) {
   const removeBtn = ln.slotId
     ? ''
     : '<button type="button" class="lb-remove" title="삭제" aria-label="삭제">×</button>';
-  return `<div class="lb-row${ln.slotId ? ' is-slot' : ' has-remove'}" data-idx="${i}"${slotAttr}>
+  return `<div class="lb-row is-slot${ln.slotId ? '' : ' has-remove'}" data-idx="${i}"${slotAttr}>
     ${removeBtn}
     <div class="lb-row-grid">
       <div class="lb-field lb-cat-field">
@@ -1102,22 +1102,12 @@ function renderDetailPanel(person, it) {
   const total = sumDetailAmount(detail);
 
   if (it.livingBudget) {
-    const existing = detail.lines.map((l) => l.category);
-    const addOpts = livingBudgetAddOptions(existing);
-    const pickOpts = addOpts.length
-      ? addOpts.map((o) => `<option value="${escAttr(o)}">${escAttr(o)}</option>`).join('')
-      : '<option value="" disabled>추가할 항목 없음</option>';
     return `<div class="item-details living-budget-details" data-person="${person}" data-id="${it.id}" data-type="living" hidden>
       <div class="detail-head">📋 생활비 상세</div>
       ${renderLivingBudgetTable(detail.lines)}
       <div class="detail-foot living-budget-foot">
-        <div class="living-budget-add-row">
-          <select class="lb-cat-pick"${addOpts.length ? '' : ' disabled'}>${pickOpts}</select>
-          <input type="text" class="lb-note-custom" placeholder="비고 (선택)">
-          <div class="lb-date-custom">${renderLbDatePill('')}</div>
-          <button type="button" class="detail-add living-budget-add-btn" data-person="${person}" data-id="${it.id}"${addOpts.length ? '' : ' disabled'}>+ 추가</button>
-        </div>
-        <div class="detail-total"><span>실제 합계</span><span class="dt-val">${fmt(total)}</span></div>
+        <button type="button" class="detail-add living-budget-add-btn" data-person="${person}" data-id="${it.id}">+ 항목 추가</button>
+        <div class="detail-total"><span>상세 합계</span><span class="dt-val">${fmt(total)}</span></div>
       </div>
     </div>`;
   }
@@ -1509,28 +1499,19 @@ function attachTrackerEvents() {
       const detailsEl = addBtn.closest('.item-details');
       const detail = readDetailFromWrap(detailsEl);
       if (it.livingBudget) {
-        const pick = detailsEl.querySelector('.lb-cat-pick');
-        const cat = pick?.value;
-        if (!cat) return;
-        const noteInp = detailsEl.querySelector('.lb-note-custom');
-        const dateInp = detailsEl.querySelector('.lb-date-custom .lb-date-input');
         const newLine = {
-          category: cat,
-          date: dateInp?.value || '',
+          category: '기타',
+          date: '',
           amount: '',
-          note: noteInp?.value?.trim() || '',
+          note: '',
         };
         detail.lines.push(newLine);
         budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
         const body = detailsEl.querySelector('.living-budget-body');
         body.insertAdjacentHTML('beforeend', renderLivingBudgetLine(newLine, detail.lines.length - 1));
-        if (pick.options.length) pick.selectedIndex = 0;
-        if (noteInp) noteInp.value = '';
-        if (dateInp) {
-          dateInp.value = '';
-          syncDatePill(dateInp);
-        }
         syncDetailToStore(detailsEl);
+        const noteInp = body.querySelector('.lb-row:last-child .lb-note');
+        noteInp?.focus();
         return;
       }
       if (it.detailType === 'invest') {
