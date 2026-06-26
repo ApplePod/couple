@@ -268,15 +268,19 @@ export function renderPortfolioMonthlySection(
   data,
   period,
   quoteState,
-  budgetCtx,
   renderSymbolInput,
   editMode = { yj: false, sn: false }
 ) {
   const year = period?.year ?? TRACKER_YEARS[0];
   const month = String(period?.month ?? "7");
   const fx = quoteState?.fxRate || 1;
-  const { inMonth } = collectMonthTrades(data, year, month);
-  const summary = summarizeMonthTrades(inMonth, fx);
+  const yjTrades = getMonthTrades(data, year, month, "yj");
+  const snTrades = getMonthTrades(data, year, month, "sn");
+  const allTrades = [
+    ...yjTrades.map((t) => ({ ...t, person: "yj", personLabel: PERSON_LABEL.yj })),
+    ...snTrades.map((t) => ({ ...t, person: "sn", personLabel: PERSON_LABEL.sn })),
+  ];
+  const summary = summarizeMonthTrades(allTrades, fx);
 
   const summaryCards = [
     { lbl: "매수", val: summary.buyKrw ? fmtWon(summary.buyKrw) : "0원", sub: summary.buyCount ? `${summary.buyCount}건` : "" },
@@ -297,10 +301,11 @@ export function renderPortfolioMonthlySection(
 
   return `<section class="pf-monthly" data-pf-monthly data-year="${year}" data-month="${month}">
     <div class="pf-monthly-head">
-      <h3>📅 ${year}년 ${month}월 매매 기록</h3>
-      <p class="pf-monthly-desc">이 달 매매만 여기에 저장 · 상단 차트·손익은 전체 월 합산 · 체크리스트와 같은 년·월 탭</p>
+      <h3>📅 월별 매매 정리</h3>
+      <p class="pf-monthly-desc">${year}년 ${month}월 · 아래에 적은 기록만 저장·표시 · 체크리스트와 같은 년·월 탭</p>
     </div>
     ${renderPeriodTabs(year, month)}
+    <div class="pf-month-title">${year}년 ${month}월 합계</div>
     <div class="pf-month-summary">
       ${summaryCards
         .map(
@@ -312,10 +317,9 @@ export function renderPortfolioMonthlySection(
         )
         .join("")}
     </div>
-    ${renderBudgetRows(inMonth, budgetCtx, fx)}
     <div class="pf-mm-dual">
-      ${renderPersonMonthColumn("yj", "영재", "yj", getMonthTrades(data, year, month, "yj"), renderSymbolInput, editMode.yj)}
-      ${renderPersonMonthColumn("sn", "시온", "sn", getMonthTrades(data, year, month, "sn"), renderSymbolInput, editMode.sn)}
+      ${renderPersonMonthColumn("yj", "영재", "yj", yjTrades, renderSymbolInput, editMode.yj)}
+      ${renderPersonMonthColumn("sn", "시온", "sn", snTrades, renderSymbolInput, editMode.sn)}
     </div>
   </section>`;
 }

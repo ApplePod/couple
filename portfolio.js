@@ -1,5 +1,5 @@
 /**
- * 투자 포트폴리오 — 월별 ledger 저장 · 상단은 전체 합산 뷰
+ * 투자 포트폴리오 — 월별 ledger만 (기록한 달 매매만 저장·표시)
  */
 import {
   loadPortfolio,
@@ -9,19 +9,7 @@ import {
   defaultPortfolio,
 } from "./portfolio-store.js";
 import { attachSymbolAutocomplete, lookupSymbol } from "./symbol-search.js";
-import {
-  renderPortfolioDashboard,
-  updatePortfolioCharts,
-  attachChartInteractions,
-} from "./portfolio-charts.js";
 import { isUsMarket } from "./portfolio-calc.js";
-import {
-  startPortfolioQuotes,
-  getQuoteState,
-  formatFxRate,
-  formatQuoteTime,
-  requestQuoteRefresh,
-} from "./portfolio-quotes.js";
 import {
   renderPortfolioMonthlySection,
   readMonthTradesFromDom,
@@ -34,10 +22,8 @@ import {
 } from "./portfolio-monthly.js";
 import {
   normalizePortfolio,
-  aggregatedView,
   setMonthTrades,
   ensureMonth,
-  hasLedgerData,
 } from "./portfolio-data.js";
 
 export { BROKERS };
@@ -61,21 +47,9 @@ let cloudSaveInFlight = false;
 let lastCloudJson = JSON.stringify(portfolioData);
 const portfolioEditMode = { yj: false, sn: false };
 let periodApi = null;
-let getBudgetContext = null;
 
 function pfJson(d) {
   return JSON.stringify(d);
-}
-
-function esc(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/"/g, "&quot;");
-}
-
-function viewData() {
-  return aggregatedView(portfolioData);
 }
 
 function currentPeriod() {
@@ -111,52 +85,14 @@ function syncMonthFromDom() {
   schedulePortfolioSave();
 }
 
-function renderQuoteBar() {
-  const qs = getQuoteState();
-  const cls = qs.status === "error" ? "error" : qs.status === "loading" ? "loading" : "ok";
-  const fx = qs.fxRate ? `USD/KRW ${formatFxRate(qs.fxRate)}` : "환율 —";
-  const time = qs.updatedAt ? `갱신 ${formatQuoteTime(qs.updatedAt)}` : "";
-  let msg = "";
-  if (qs.status === "error") {
-    msg = qs.error?.includes("404") || qs.error?.includes("Failed")
-      ? "시세 함수 미배포 — supabase functions deploy portfolio-quotes"
-      : qs.error || "시세 조회 실패";
-  } else if (qs.status === "loading" && !qs.updatedAt) {
-    msg = "시세 불러오는 중…";
-  } else if (qs.status === "ok" && qs.updatedAt) {
-    msg = "국내 키움 · 미국·환율 Yahoo";
-  }
-  return `<div class="pf-quote-bar ${cls}" data-pf-quote-bar>
-    <span class="pf-quote-fx">💱 ${fx}</span>
-    ${time ? `<span class="pf-quote-time">${time}</span>` : ""}
-    ${msg ? `<span class="pf-quote-msg">${esc(msg)}</span>` : ""}
-  </div>`;
-}
-
 function renderMonthlyBlock(renderSymbolInput) {
   return renderPortfolioMonthlySection(
     portfolioData,
     currentPeriod(),
-    getQuoteState(),
-    getBudgetContext?.() ?? null,
+    { fxRate: null },
     renderSymbolInput,
     portfolioEditMode
   );
-}
-
-function refreshDashboard() {
-  const section = document.getElementById("portfolio-section");
-  if (!section) return;
-  const dash = section.querySelector("[data-pf-dashboard]");
-  if (dash) {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = renderPortfolioDashboard(viewData(), getQuoteState());
-    dash.replaceWith(tmp.firstElementChild);
-  } else {
-    updatePortfolioCharts(section, viewData(), getQuoteState());
-    return;
-  }
-  updatePortfolioCharts(section, viewData(), getQuoteState());
 }
 
 export function refreshPortfolioMonthly() {
@@ -164,32 +100,12 @@ export function refreshPortfolioMonthly() {
 }
 
 export function refreshPortfolioBudget() {
-  const section = document.getElementById("portfolio-section");
-  const monthly = section?.querySelector("[data-pf-monthly]");
-  if (!monthly || !window._portfolioRenderSymbolInput) return;
-  syncMonthFromDom();
-  const tmp = document.createElement("div");
-  tmp.innerHTML = renderMonthlyBlock(window._portfolioRenderSymbolInput);
-  monthly.replaceWith(tmp.firstElementChild);
-  attachSymbolAutocomplete(section);
-  refreshDashboard();
+  refreshPortfolioMonthly();
 }
 
 export function onPortfolioPeriodChange() {
   syncMonthFromDom();
   renderPortfolioPage(window._portfolioRenderSymbolInput);
-}
-
-function refreshQuoteUI() {
-  const section = document.getElementById("portfolio-section");
-  if (!section) return;
-  const bar = section.querySelector("[data-pf-quote-bar]");
-  if (bar) {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = renderQuoteBar();
-    bar.replaceWith(tmp.firstElementChild);
-  }
-  refreshDashboard();
 }
 
 export function renderPortfolioPage(renderSymbolInput) {
@@ -207,13 +123,10 @@ export function renderPortfolioPage(renderSymbolInput) {
       <h2>💼 투자 포트폴리오</h2>
       ${syncStatus}
     </div>
-    ${renderQuoteBar()}
-    ${renderPortfolioDashboard(viewData(), getQuoteState())}
     ${renderMonthlyBlock(renderSymbolInput)}`;
 
   attachPortfolioEvents(section, renderSymbolInput);
   attachSymbolAutocomplete(section);
-  attachChartInteractions(section);
 }
 
 function openPfDatePicker(wrap) {
@@ -295,18 +208,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
     const monthly = e.target.closest("[data-pf-monthly]");
     if (monthly) {
       clearTimeout(monthly._pfTimer);
-      monthly._pfTimer = setTimeout(() => {
-        syncMonthFromDom();
-        refreshDashboard();
-      }, 300);
-    }
-    if (e.target.closest(".dl-symbol") && monthly) {
-      clearTimeout(monthly._symTimer);
-      monthly._symTimer = setTimeout(() => {
-        syncMonthFromDom();
-        refreshDashboard();
-        requestQuoteRefresh();
-      }, 200);
+      monthly._pfTimer = setTimeout(() => syncMonthFromDom(), 300);
     }
   });
 
@@ -315,7 +217,6 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       const dateInp = e.target.closest(".pf-trade-date-input, .ci-date-input");
       if (dateInp) syncTradeDatePill(dateInp);
       syncMonthFromDom();
-      refreshDashboard();
     }
   });
 
@@ -341,16 +242,14 @@ export function getPortfolioData() {
 export function initPortfolioModule(renderSymbolInput, storeMode, api = {}) {
   window._portfolioStoreMode = storeMode;
   periodApi = { getPeriod: api.getPeriod, setPeriod: api.setPeriod };
-  getBudgetContext = api.getBudgetContext ?? null;
   portfolioData = enrichPortfolioData(loadPortfolio());
   lastCloudJson = pfJson(portfolioData);
   renderPortfolioPage(renderSymbolInput);
-  startPortfolioQuotes(() => viewData(), refreshQuoteUI);
 }
 
 export function setPortfolioFromRemote(remote, meta = {}) {
   if (meta.source === "initial") {
-    portfolioData = enrichPortfolioData(remote?.ledger || remote?.yj ? remote : defaultPortfolio());
+    portfolioData = enrichPortfolioData(remote?.ledger ? remote : defaultPortfolio());
     lastCloudJson = pfJson(portfolioData);
     persistPortfolioLocal(portfolioData);
     renderPortfolioPage(window._portfolioRenderSymbolInput);
