@@ -505,13 +505,13 @@ function renderLbDatePill(date) {
   </div>`;
 }
 
-function renderLivingBudgetLine(ln, i) {
+function renderLivingBudgetLine(person, ln, i) {
   const icon = livingBudgetCatIcon(ln.category);
   const slotAttr = ln.slotId ? ` data-slot-id="${escAttr(ln.slotId)}"` : '';
   const removeBtn = ln.slotId
     ? ''
-    : '<button type="button" class="lb-remove" title="삭제" aria-label="삭제">×</button>';
-  return `<div class="lb-row is-slot${ln.slotId ? '' : ' has-remove'}" data-idx="${i}"${slotAttr}>
+    : renderRowRemoveBtn(person, '', 'lb-custom-remove', '항목 삭제');
+  return `<div class="lb-row is-slot${ln.slotId ? '' : ' has-row-remove'}" data-idx="${i}"${slotAttr}>
     ${removeBtn}
     <div class="lb-row-grid">
       <div class="lb-field lb-cat-field">
@@ -538,17 +538,17 @@ function renderLivingBudgetLine(ln, i) {
   </div>`;
 }
 
-function renderLivingBudgetTable(lines) {
+function renderLivingBudgetTable(person, lines) {
   return `<div class="lb-table">
     <div class="lb-table-head" aria-hidden="true">
       <span>분류</span><span>비고</span><span>날짜</span><span>실제</span>
     </div>
-    <div class="living-budget-body detail-body">${renderLivingBudgetLines(lines)}</div>
+    <div class="living-budget-body detail-body">${renderLivingBudgetLines(person, lines)}</div>
   </div>`;
 }
 
-function renderLivingBudgetLines(lines) {
-  return lines.map((ln, i) => renderLivingBudgetLine(ln, i)).join('');
+function renderLivingBudgetLines(person, lines) {
+  return lines.map((ln, i) => renderLivingBudgetLine(person, ln, i)).join('');
 }
 
 function renderLivingBudget() {
@@ -1104,9 +1104,9 @@ function renderDetailPanel(person, it) {
   if (it.livingBudget) {
     return `<div class="item-details living-budget-details" data-person="${person}" data-id="${it.id}" data-type="living" hidden>
       <div class="detail-head">📋 생활비 상세</div>
-      ${renderLivingBudgetTable(detail.lines)}
+      ${renderLivingBudgetTable(person, detail.lines)}
       <div class="detail-foot living-budget-foot">
-        <button type="button" class="detail-add living-budget-add-btn" data-person="${person}" data-id="${it.id}">+ 항목 추가</button>
+        <button type="button" class="detail-add living-budget-add-btn tracker-edit-only" data-person="${person}" data-id="${it.id}">+ 항목 추가</button>
         <div class="detail-total"><span>상세 합계</span><span class="dt-val">${fmt(total)}</span></div>
       </div>
     </div>`;
@@ -1508,7 +1508,7 @@ function attachTrackerEvents() {
         detail.lines.push(newLine);
         budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
         const body = detailsEl.querySelector('.living-budget-body');
-        body.insertAdjacentHTML('beforeend', renderLivingBudgetLine(newLine, detail.lines.length - 1));
+        body.insertAdjacentHTML('beforeend', renderLivingBudgetLine(person, newLine, detail.lines.length - 1));
         syncDetailToStore(detailsEl);
         const noteInp = body.querySelector('.lb-row:last-child .lb-note');
         noteInp?.focus();
@@ -1525,11 +1525,11 @@ function attachTrackerEvents() {
       scheduleSave();
       return;
     }
-    const rmBtn = e.target.closest('.lb-remove');
-    if (rmBtn) {
+    const rmLbBtn = e.target.closest('.lb-custom-remove');
+    if (rmLbBtn) {
       e.preventDefault();
-      const detailsEl = rmBtn.closest('.item-details');
-      const line = rmBtn.closest('.lb-row');
+      const detailsEl = rmLbBtn.closest('.item-details');
+      const line = rmLbBtn.closest('.lb-row');
       if (line?.dataset.slotId) return;
       line?.remove();
       syncDetailToStore(detailsEl);

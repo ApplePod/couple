@@ -533,8 +533,11 @@
       box-shadow: 0 1px 3px rgba(0,0,0,.04);
       transition: border-color .15s, box-shadow .15s;
     }
-    .lb-row.has-remove {
-      padding-right: 30px;
+    .lb-row.has-row-remove {
+      position: relative;
+    }
+    .tracker-col.edit-mode .lb-row.has-row-remove {
+      padding-right: 34px;
     }
     .lb-row.is-slot {
       border-color: rgba(249,143,117,.2);
@@ -644,24 +647,6 @@
       border-color: var(--sn);
       box-shadow: 0 0 0 3px var(--sn-glow);
     }
-    .lb-remove {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 22px;
-      height: 22px;
-      padding: 0;
-      border: none;
-      background: var(--red-dim);
-      color: var(--red);
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: .9rem;
-      line-height: 1;
-      transition: background .15s, transform .1s;
-      z-index: 1;
-    }
-    .lb-remove:hover { background: rgba(220,38,38,.15); transform: scale(1.05); }
     @media (max-width: 700px) {
       .lb-table-head { display: none; }
       .lb-row-grid {
@@ -676,8 +661,7 @@
       .lb-note-field { grid-area: note; }
       .lb-date-field { grid-area: date; }
       .lb-actual-field { grid-area: actual; }
-      .lb-row.has-remove { padding-right: 30px; }
-      .lb-row.has-remove .lb-remove { top: 8px; right: 8px; }
+      .tracker-col.edit-mode .lb-row.has-row-remove { padding-right: 34px; }
       .lb-lbl { display: block; }
     }
     .living-budget-foot {
