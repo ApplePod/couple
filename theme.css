@@ -1773,6 +1773,9 @@
     }
     .pf-dash-stat.gain .pf-dash-stat-val { color: var(--green); }
     .pf-dash-stat.loss .pf-dash-stat-val { color: var(--red); }
+    @media (max-width: 900px) {
+      .pf-charts-grid { grid-template-columns: 1fr; }
+    }
     .pf-household-card {
       background: linear-gradient(135deg, rgba(255,248,245,.9), #fff);
       border: 1px solid rgba(249,143,117,.2);
@@ -2334,9 +2337,12 @@
     .pf-dash-stat-lbl { font-size: .62rem; color: var(--muted); margin-top: 4px; font-weight: 600; }
     .pf-charts-grid {
       display: grid;
-      grid-template-columns: 1fr 1.4fr 1fr;
+      grid-template-columns: repeat(2, 1fr);
       gap: 12px;
       margin-bottom: 14px;
+    }
+    .pf-charts-4 .pf-chart-body {
+      min-height: 200px;
     }
     .pf-chart-card {
       background: #fff;
