@@ -115,6 +115,7 @@ export function normalizePortfolio(raw) {
   if (raw.ledger && typeof raw.ledger === "object") {
     return { ledger: structuredClone(raw.ledger) };
   }
+  if (legacyHasData(raw)) return migrateLegacyPositions(raw);
   return defaultPortfolio();
 }
 
