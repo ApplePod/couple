@@ -191,6 +191,7 @@ const SN_CHECK_ITEMS = [
   { id: 'crypto', name: '코인 + 금', note: '자동이체', amt: 200000, auto: true, detailType: 'invest' },
   { id: 'pocket', name: '용돈', note: '직접 관리', amt: 700000, auto: false, detailType: 'living' },
   { id: 'travel', name: '여행비', note: '국내2 · 해외1', amt: 200000, auto: false, detailType: 'invest' },
+  { id: 'living', name: '생활비', note: '2인 가구 · 직접 관리', amt: 0, auto: false, detailType: 'living', livingBudget: true },
 ];
 
 let budgetChecks = loadChecks();
@@ -422,19 +423,44 @@ const LIVING_PRESETS = {
   comfort: [420000, 180000, 120000, 80000,  60000, 50000, 50000],
 };
 
-/** 시온 체크리스트 — 계획 탭 생활비 배분 항목과 동일 */
-const SN_LIVING_BUDGET_ITEMS = LIVING_CATS.map((cat, i) => ({
-  id: cat.id,
-  name: cat.name,
-  note: cat.hint,
-  amt: LIVING_PRESETS.normal[i],
-  auto: false,
-  detailType: 'living',
-  livingFixedCat: cat.name,
-}));
+const LIVING_DETAIL_EXTRA = ['여행', '주거비', '월세 대출이자', '전기세', '가스료', '수도요금', '인터넷', '윌리엄 할부', '기타'];
 
-function getPersonCheckDefs(person) {
-  return person === 'yj' ? YJ_CHECK_ITEMS : [...SN_CHECK_ITEMS, ...SN_LIVING_BUDGET_ITEMS];
+function defaultLivingBudgetDetail() {
+  return {
+    type: 'living',
+    lines: LIVING_CATS.map((cat, i) => ({
+      category: cat.name,
+      plan: LIVING_PRESETS.normal[i],
+      amount: '',
+    })),
+  };
+}
+
+function normalizeLivingBudgetDetail(d) {
+  const byCat = new Map((d?.lines || []).map((l) => [l.category, l]));
+  const lines = LIVING_CATS.map((cat, i) => {
+    const existing = byCat.get(cat.name);
+    return {
+      category: cat.name,
+      plan: existing?.plan ?? LIVING_PRESETS.normal[i],
+      amount: existing?.amount ?? '',
+    };
+  });
+  for (const l of d?.lines || []) {
+    if (!LIVING_CATS.some((c) => c.name === l.category)) {
+      lines.push({
+        category: l.category,
+        plan: l.plan ?? 0,
+        amount: l.amount ?? '',
+      });
+    }
+  }
+  return { type: 'living', lines };
+}
+
+function livingBudgetAddOptions(existingCats) {
+  const base = [...LIVING_CATS.map((c) => c.name), ...LIVING_DETAIL_EXTRA];
+  return [...new Set(base)].filter((n) => !existingCats.includes(n));
 }
 
 function renderLivingBudget() {
@@ -557,7 +583,7 @@ function scheduleSave() {
 }
 
 function getVisibleItems(person) {
-  const items = getPersonCheckDefs(person);
+  const items = person === 'yj' ? YJ_CHECK_ITEMS : SN_CHECK_ITEMS;
   const hidden = new Set(getHiddenItems(budgetChecks, trackerYear, trackerMonth, person));
   return items.filter(it => !it.forecastOnly && (!it.julyOnly || trackerMonth === '7') && !hidden.has(it.id));
 }
@@ -624,9 +650,10 @@ function calcPersonWallet(person) {
   for (const it of items) {
     if (!getCheck(budgetChecks, trackerYear, trackerMonth, person, it.id)) continue;
     checkedCount++;
-    plannedChecked += it.amt;
+    const plan = itemPlanAmount(person, it);
+    plannedChecked += plan;
     const actual = getActual(budgetChecks, trackerYear, trackerMonth, person, it.id);
-    actualSpent += actual !== null ? actual : it.amt;
+    actualSpent += actual !== null && actual !== '' ? actual : plan;
   }
   for (const ln of monthlyExtra) {
     if (!ln.checked) continue;
@@ -725,8 +752,6 @@ function updateWalletSummaries() {
   renderForecast();
 }
 
-const LIVING_DETAIL_EXTRA = ['여행', '주거비', '월세 대출이자', '전기세', '가스료', '수도요금', '인터넷', '윌리엄 할부', '기타'];
-
 function livingCategoryOptions(fixedCat) {
   if (fixedCat) return [fixedCat];
   const names = LIVING_CATS.map(c => c.name);
@@ -737,6 +762,7 @@ function defaultDetail(it) {
   if (it.detailType === 'invest') {
     return { type: 'invest', lines: [{ symbol: '', shares: '', amount: '' }] };
   }
+  if (it.livingBudget) return defaultLivingBudgetDetail();
   if (it.detailType === 'living') {
     const cat = it.livingFixedCat || LIVING_CATS[0]?.name || '기타';
     return { type: 'living', lines: [{ category: cat, amount: '' }] };
@@ -746,8 +772,22 @@ function defaultDetail(it) {
 
 function ensureDetail(person, it) {
   let d = getDetail(budgetChecks, trackerYear, trackerMonth, person, it.id);
+  if (it.livingBudget) {
+    if (!d || d.type !== 'living' || !Array.isArray(d.lines) || !d.lines.length) {
+      return defaultLivingBudgetDetail();
+    }
+    return normalizeLivingBudgetDetail(d);
+  }
   if (!d || !Array.isArray(d.lines) || !d.lines.length) d = defaultDetail(it);
   return d;
+}
+
+function itemPlanAmount(person, it) {
+  if (it.livingBudget) {
+    const d = ensureDetail(person, it);
+    return d.lines.reduce((s, ln) => s + (Number(ln.plan) || 0), 0);
+  }
+  return it.amt;
 }
 
 function sumDetailAmount(detail) {
@@ -775,6 +815,21 @@ function renderInvestLines(lines) {
     </tr>`).join('');
 }
 
+function renderLivingBudgetLines(lines) {
+  return lines.map((ln, i) => {
+    const plan = Number(ln.plan) || 0;
+    return `<div class="living-budget-line check-item sub" data-idx="${i}">
+      <div class="ci-name"><span class="ci-name-main">${escAttr(ln.category)}</span><small>직접 관리</small></div>
+      <div class="ci-plan"><span>계획</span>${plan ? fmtShort(plan) : '—'}</div>
+      <input type="text" class="dl-amount lb-actual" placeholder="실제 금액" inputmode="numeric"
+        value="${formatDetailAmt(ln.amount)}">
+      <input type="hidden" class="dl-category" value="${escAttr(ln.category)}">
+      <input type="hidden" class="dl-plan" value="${plan}">
+      <button type="button" class="dl-remove lb-remove" title="삭제">×</button>
+    </div>`;
+  }).join('');
+}
+
 function renderLivingLines(lines, fixedCat) {
   const opts = livingCategoryOptions(fixedCat);
   return lines.map((ln, i) => {
@@ -794,6 +849,26 @@ function renderDetailPanel(person, it) {
   if (!it.detailType) return '';
   const detail = ensureDetail(person, it);
   const total = sumDetailAmount(detail);
+
+  if (it.livingBudget) {
+    const existing = detail.lines.map((l) => l.category);
+    const addOpts = livingBudgetAddOptions(existing);
+    const pickOpts = addOpts.length
+      ? addOpts.map((o) => `<option value="${escAttr(o)}">${escAttr(o)}</option>`).join('')
+      : '<option value="" disabled>추가할 항목 없음</option>';
+    return `<div class="item-details living-budget-details" data-person="${person}" data-id="${it.id}" data-type="living" hidden>
+      <div class="detail-head">📋 생활비 상세 (분류별)</div>
+      <div class="living-budget-body detail-body">${renderLivingBudgetLines(detail.lines)}</div>
+      <div class="detail-foot living-budget-foot">
+        <div class="living-budget-add">
+          <select class="lb-cat-pick"${addOpts.length ? '' : ' disabled'}>${pickOpts}</select>
+          <button type="button" class="detail-add living-budget-add-btn" data-person="${person}" data-id="${it.id}"${addOpts.length ? '' : ' disabled'}>+ 항목 추가</button>
+        </div>
+        <div class="detail-total"><span>합계</span><span class="dt-val">${fmt(total)}</span></div>
+      </div>
+    </div>`;
+  }
+
   const summaryLabel = it.detailType === 'invest' ? '📋 매수 상세 (종목·주·금액)' : '📋 지출 상세 (분류별)';
 
   if (it.detailType === 'invest') {
@@ -824,12 +899,21 @@ function renderDetailPanel(person, it) {
 }
 
 function getCheckItemDef(person, id) {
-  return getPersonCheckDefs(person).find(x => x.id === id);
+  const items = person === 'yj' ? YJ_CHECK_ITEMS : SN_CHECK_ITEMS;
+  return items.find(x => x.id === id);
 }
 
 function readDetailFromWrap(detailsEl) {
   const type = detailsEl.dataset.type;
   const it = getCheckItemDef(detailsEl.dataset.person, detailsEl.dataset.id);
+  if (it?.livingBudget) {
+    const lines = [...detailsEl.querySelectorAll('.living-budget-line')].map((row) => ({
+      category: row.querySelector('.dl-category')?.value || '',
+      plan: Number(row.querySelector('.dl-plan')?.value) || 0,
+      amount: parseActualInput(row.querySelector('.dl-amount')?.value || ''),
+    }));
+    return { type: 'living', lines };
+  }
   const lines = [...detailsEl.querySelectorAll('.detail-line')].map(row => {
     if (type === 'invest') {
       return {
@@ -946,15 +1030,21 @@ function renderCheckRow(person, it) {
   const deposit = getDeposit(budgetChecks, trackerYear, trackerMonth, person, it.id);
   const detailPanel = renderDetailPanel(person, it);
   const hasDetail = !!it.detailType;
-  return `<div class="check-item-wrap${hasDetail ? ' has-detail' : ''}" data-person="${person}" data-id="${it.id}">
+  const planAmt = itemPlanAmount(person, it);
+  const actualField = it.livingBudget
+    ? `<input type="text" class="ci-actual ci-actual-sum" data-person="${person}" data-id="${it.id}"
+        placeholder="실제 금액" inputmode="numeric" readonly tabindex="-1"
+        value="${formatActualInput(actual)}">`
+    : `<input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
+        placeholder="실제 금액" inputmode="numeric"
+        value="${formatActualInput(actual)}">`;
+  return `<div class="check-item-wrap${hasDetail ? ' has-detail' : ''}${it.livingBudget ? ' living-budget-wrap' : ''}" data-person="${person}" data-id="${it.id}">
     <div class="check-item has-row-remove${checked ? ' done' : ''}${hasDetail ? ' expandable' : ''}" data-person="${person}" data-id="${it.id}">
       <input type="checkbox" class="ci-check" data-person="${person}" data-id="${it.id}" ${checked ? 'checked' : ''}>
       <div class="ci-name"><span class="ci-name-main">${it.name}${itemSubLabel(it)}</span></div>
       ${renderDepositPill(deposit, `data-person="${person}" data-id="${it.id}"`)}
-      <div class="ci-plan"><span>계획</span>${fmtShort(it.amt)}</div>
-      <input type="text" class="ci-actual" data-person="${person}" data-id="${it.id}"
-        placeholder="실제 금액" inputmode="numeric"
-        value="${formatActualInput(actual)}">
+      <div class="ci-plan"><span>계획</span>${fmtShort(planAmt)}</div>
+      ${actualField}
       ${renderRowRemoveBtn(person, `data-id="${it.id}"`, 'ci-hide-btn', '이번 달에서 제외')}
     </div>
     ${detailPanel}
@@ -1017,15 +1107,8 @@ function renderCheckColumn(person, items, colorClass) {
   const monthlyExtra = getMonthlyExtraLines(person);
   const w = calcPersonWallet(person);
 
-  const coreMonthly = monthly.filter((it) => it.detailType !== 'living');
-  const livingMonthly = monthly.filter((it) => it.detailType === 'living');
-  const monthlyRows = coreMonthly.map((it) => renderCheckRow(person, it)).join('');
-  const livingRows = livingMonthly.map((it) => renderCheckRow(person, it)).join('');
+  const monthlyRows = monthly.map(it => renderCheckRow(person, it)).join('');
   const monthlyExtraRows = monthlyExtra.map(ln => renderMonthlyExtraRow(person, ln)).join('');
-  const livingSection = livingMonthly.length
-    ? `<div class="check-section-label living">🛒 생활비</div>
-    <div class="check-list living-check-list" data-person="${person}">${livingRows}</div>`
-    : '';
   const hidden = getHiddenItems(budgetChecks, trackerYear, trackerMonth, person);
   const hiddenNote = hidden.length
     ? `<button type="button" class="hidden-restore-btn tracker-edit-only" data-person="${person}">숨긴 항목 ${hidden.length}개 되돌리기</button>` : '';
@@ -1047,7 +1130,6 @@ function renderCheckColumn(person, items, colorClass) {
     <div class="check-section-label">📅 월급에서 (실수령 기준)</div>
     <div class="check-list monthly-check-list" data-person="${person}">${monthlyRows}${monthlyExtraRows}</div>
     <button type="button" class="monthly-add-btn tracker-edit-only" data-person="${person}">+ 월급 항목 추가</button>
-    ${livingSection}
     ${hiddenNote}
     ${renderSavingsExtraSection(person)}
   </div>`;
@@ -1175,6 +1257,19 @@ function attachTrackerEvents() {
       const it = getCheckItemDef(person, id);
       const detailsEl = addBtn.closest('.item-details');
       const detail = readDetailFromWrap(detailsEl);
+      if (it.livingBudget) {
+        const pick = detailsEl.querySelector('.lb-cat-pick');
+        const cat = pick?.value;
+        if (!cat) return;
+        detail.lines.push({ category: cat, plan: 0, amount: '' });
+        budgetChecks = setDetail(budgetChecks, trackerYear, trackerMonth, person, id, detail);
+        renderTracker();
+        attachTrackerEvents();
+        const wrap = section.querySelector(`.check-item-wrap[data-person="${person}"][data-id="${id}"]`);
+        wrap?.classList.add('detail-open');
+        wrap?.querySelector('.item-details')?.removeAttribute('hidden');
+        return;
+      }
       if (it.detailType === 'invest') {
         detail.lines.push({ symbol: '', shares: '', amount: '' });
         detailsEl.querySelector('.detail-body').insertAdjacentHTML('beforeend', renderInvestLines([detail.lines.at(-1)]));
@@ -1190,6 +1285,13 @@ function attachTrackerEvents() {
     if (rmBtn) {
       e.preventDefault();
       const detailsEl = rmBtn.closest('.item-details');
+      if (detailsEl.dataset.type === 'living' && detailsEl.classList.contains('living-budget-details')) {
+        const body = detailsEl.querySelector('.living-budget-body');
+        if (body.querySelectorAll('.living-budget-line').length <= 1) return;
+        rmBtn.closest('.living-budget-line').remove();
+        syncDetailToStore(detailsEl);
+        return;
+      }
       const body = detailsEl.querySelector('.detail-body');
       if (body.querySelectorAll('.detail-line').length <= 1) return;
       rmBtn.closest('.detail-line').remove();

@@ -487,6 +487,51 @@
       padding: 10px 4px 6px; font-weight: 600;
       color: var(--muted); font-size: .78rem;
     }
+    .living-budget-details { margin-left: 0; padding: 10px 12px 12px; }
+    .living-budget-body { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .living-budget-line.check-item.sub {
+      grid-template-columns: minmax(0, 1fr) minmax(52px, auto) minmax(72px, 92px) 28px;
+      grid-template-areas: "name plan actual rm";
+      min-height: 48px;
+      padding: 8px 10px;
+      margin: 0;
+      background: var(--surface);
+    }
+    .living-budget-line .ci-name { grid-area: name; }
+    .living-budget-line .ci-plan { grid-area: plan; }
+    .living-budget-line .lb-actual { grid-area: actual; }
+    .living-budget-line .lb-remove {
+      grid-area: rm;
+      width: 28px; height: 28px; padding: 0; border: none;
+      background: var(--red-dim); color: var(--red);
+      border-radius: 6px; cursor: pointer; font-size: 1rem; line-height: 1;
+    }
+    .living-budget-foot {
+      display: flex; flex-wrap: wrap; align-items: center;
+      justify-content: space-between; gap: 10px; margin-top: 10px;
+    }
+    .living-budget-add {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1; min-width: 0;
+    }
+    .living-budget-add .lb-cat-pick {
+      flex: 1; min-width: 120px; padding: 7px 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; font-family: inherit; font-size: .78rem; color: var(--text);
+    }
+    .living-budget-add .living-budget-add-btn {
+      padding: 7px 12px; border: 1px dashed var(--border);
+      background: transparent; color: var(--muted);
+      border-radius: 8px; font-family: inherit; font-size: .75rem;
+      font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .living-budget-add .living-budget-add-btn:hover:not(:disabled) {
+      border-color: var(--sn); color: var(--sn);
+    }
+    .ci-actual-sum {
+      background: var(--surface2) !important;
+      color: var(--text) !important;
+      cursor: default;
+    }
     .detail-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
     .detail-table th {
       text-align: left; font-size: .65rem; color: var(--muted);
