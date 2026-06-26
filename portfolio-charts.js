@@ -1,7 +1,7 @@
 /** 포트폴리오 시각화 — 도넛·비중 */
 
 import { calcPosition, isUsMarket } from "./portfolio-calc.js";
-import { quoteOptsForPosition, getQuoteState, formatReturnPct } from "./portfolio-quotes.js";
+import { quoteOptsForPosition, getQuoteState } from "./portfolio-quotes.js";
 
 const PERSON_COLORS = { yj: "#5a8fc9", sn: "#f98f75" };
 /** 영재 — 블루 파스텔 */
@@ -167,10 +167,6 @@ export function getBuySlices(positions, max = 8, colorMap = null) {
       value: cost,
       shares: stats.buyShares,
       avgPrice: stats.avgPrice,
-      returnPct:
-        stats.heldShares > 0 && stats.returnPct != null && Number.isFinite(stats.returnPct)
-          ? stats.returnPct
-          : null,
     });
   }
   items.sort((a, b) => b.value - a.value);
@@ -427,7 +423,7 @@ function renderPersonBuyCard(title, slices, splitOpts, tone, pnl, hasQuotes) {
       <h4 class="pf-chart-title">${esc(title)}</h4>
       ${renderChartPnlBadge(pnl, hasQuotes)}
     </div>
-    ${renderChartSplit(slices, splitOpts, tone, { showReturn: hasQuotes })}
+    ${renderChartSplit(slices, splitOpts, tone, { labelsOnly: true })}
   </div>`;
 }
 
@@ -440,7 +436,7 @@ function renderChartSplit(slices, donutOpts = {}, tone = null, legendOpts = {}) 
       ${renderDonut(slices, { size, stroke, hideCenter: true, gapped: true })}
     </div>
     <div class="pf-chart-legend-col">
-      ${renderLegend(slices, { compact: true, showReturn: legendOpts.showReturn })}
+      ${renderLegend(slices, { compact: true, labelsOnly: legendOpts.labelsOnly })}
     </div>
   </div>`;
 }
@@ -449,27 +445,15 @@ export function renderLegend(slices, opts = {}) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) return "";
   if (opts.compact) {
-    const retCls = opts.showReturn ? " pf-legend-pnl" : "";
-    return `<ul class="pf-legend pf-legend-compact${retCls}">
+    return `<ul class="pf-legend pf-legend-compact${opts.labelsOnly ? " pf-legend-labels-only" : ""}">
       ${slices
-        .map((s, i) => {
-          const ret =
-            opts.showReturn && s.returnPct != null
-              ? formatReturnPct(s.returnPct)
-              : opts.showReturn
-                ? "—"
-                : "";
-          const retSpan =
-            opts.showReturn
-              ? `<span class="pf-legend-ret${s.returnPct > 0 ? " gain" : s.returnPct < 0 ? " loss" : ""}">${ret}</span>`
-              : "";
-          return `<li class="pf-legend-item${i === 0 ? " is-top is-active" : ""}" data-seg-idx="${i}">
+        .map(
+          (s, i) => `<li class="pf-legend-item${i === 0 ? " is-top is-active" : ""}" data-seg-idx="${i}">
           <span class="pf-legend-swatch" style="background:${s.color}"></span>
           <span class="pf-legend-label">${esc(s.label)}</span>
-          <span class="pf-legend-pct">${fmtPct(s.value / total)}</span>
-          ${retSpan}
-        </li>`;
-        })
+          ${opts.labelsOnly ? "" : `<span class="pf-legend-pct">${fmtPct(s.value / total)}</span>`}
+        </li>`
+        )
         .join("")}
     </ul>`;
   }
@@ -661,11 +645,7 @@ export function renderPortfolioDashboard(data, quoteState) {
       ${renderPersonBuyCard("영재 매수 비중", yjBuySlices, splitOpts, "yj", yjPnl, hasQuotes)}
       ${renderPersonBuyCard("시온 매수 비중", snBuySlices, splitOpts, "sn", snPnl, hasQuotes)}
     </div>
-    <div class="pf-table-section">
-      <h4 class="pf-chart-title">종목 상세 · 매수 합산</h4>
-      ${renderAllocationTable(totalBuySlices, { showWho: true, amountLabel: "매수금액" })}
-    </div>
-    <p class="pf-hw-note">도넛·표는 매수 금액 기준 · 잔여원금·평가손익은 매수−매도(평단법) · 시세는 약 1분 갱신</p>
+    <p class="pf-hw-note">도넛은 매수 금액 기준 · 잔여원금·평가손익은 매수−매도(평단법) · 시세는 약 1분 갱신</p>
   </div>`;
 }
 
