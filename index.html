@@ -58,6 +58,7 @@
 
 <script src="supabase-config.js"></script>
 <script type="module">
+import { initSymbolSearch, attachSymbolAutocomplete, renderSymbolInput } from './symbol-search.js';
 import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
 import {
   INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
@@ -933,7 +934,7 @@ function formatDetailAmt(v) {
 function renderInvestLines(lines) {
   return lines.map((ln, i) => `
     <tr class="detail-line" data-idx="${i}">
-      <td><input class="dl-symbol" placeholder="종목명" value="${escAttr(ln.symbol)}"></td>
+      <td class="symbol-ac-cell">${renderSymbolInput(ln.symbol)}</td>
       <td style="width:56px"><input class="dl-shares" placeholder="주" inputmode="numeric" value="${escAttr(ln.shares)}"></td>
       <td><input class="dl-amount" placeholder="금액" inputmode="numeric" value="${formatDetailAmt(ln.amount)}"></td>
       <td style="width:32px"><button type="button" class="dl-remove" title="삭제">×</button></td>
@@ -1252,6 +1253,7 @@ function renderCheckColumn(person, items, colorClass) {
 
 function attachTrackerEvents() {
   const section = document.getElementById('tracker-section');
+  attachSymbolAutocomplete(section);
 
   section.onclick = e => {
     const datePill = e.target.closest('.ci-date-pill');
@@ -1946,6 +1948,7 @@ window.addEventListener('beforeunload', () => {
 const store = await initStore(applyRemoteChecks);
 storeMode = store.mode;
 lastCloudJson = checksJson(budgetChecks);
+await initSymbolSearch();
 renderTracker();
 </script>
 </body>
