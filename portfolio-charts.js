@@ -4,8 +4,18 @@ import { calcPosition, isUsMarket } from "./portfolio-calc.js";
 import { quoteOptsForPosition, getQuoteState } from "./portfolio-quotes.js";
 
 const PERSON_COLORS = { yj: "#5a8fc9", sn: "#f98f75" };
-const YJ_TINTS = ["#5a8fc9", "#6e9ed4", "#88b1de", "#a4c5e8", "#c2d9f2"];
-const SN_TINTS = ["#f98f75", "#faa18a", "#fbb59f", "#fccab5", "#fddfce"];
+/** 영재 — 블루 파스텔 */
+const YJ_PASTELS = [
+  "#6fa3dc", "#8eb8e8", "#a8c9f0", "#c2daf7",
+  "#5a8fc9", "#b3cff0", "#7eb5e4", "#d4e8fb",
+];
+/** 시온 — 피치·코랄 파스텔 */
+const SN_PASTELS = [
+  "#f5a090", "#f8b5a8", "#fbc8be", "#ffd8cf",
+  "#f98f75", "#f0a898", "#ffc9b8", "#ffe5dc",
+];
+const YJ_TINTS = YJ_PASTELS;
+const SN_TINTS = SN_PASTELS;
 const SLICE_COLORS = [
   "#3b82f6", "#8b5cf6", "#22c55e", "#f59e0b",
   "#fb923c", "#06b6d4", "#60a5fa", "#a78bfa",
@@ -105,7 +115,7 @@ export function getBuySlices(positions, max = 8, palette = null) {
   if (palette) {
     return out.map((s, i) => ({
       ...s,
-      color: s.label === "기타" ? OTHER_COLOR : s.color || palette[i % palette.length],
+      color: s.label === "기타" ? OTHER_COLOR : palette[i % palette.length],
     }));
   }
   return out;
@@ -337,10 +347,11 @@ export function renderDonut(slices, opts = {}) {
   </div>`;
 }
 
-function renderChartSplit(slices, donutOpts = {}) {
+function renderChartSplit(slices, donutOpts = {}, tone = null) {
   const size = donutOpts.size ?? 128;
   const stroke = donutOpts.stroke ?? 22;
-  return `<div class="pf-chart-split">
+  const toneCls = tone ? ` pf-chart-tone-${tone}` : "";
+  return `<div class="pf-chart-split${toneCls}">
     <div class="pf-chart-donut-col">
       ${renderDonut(slices, { size, stroke, hideCenter: true, gapped: true })}
     </div>
@@ -467,8 +478,8 @@ function countBuySymbols(data) {
 
 export function renderPortfolioDashboard(data, quoteState) {
   const assetSlices = getAssetTypeSlices(data);
-  const yjBuySlices = getBuySlices(data.yj?.positions, 8, YJ_TINTS);
-  const snBuySlices = getBuySlices(data.sn?.positions, 8, SN_TINTS);
+  const yjBuySlices = getBuySlices(data.yj?.positions, 8, YJ_PASTELS);
+  const snBuySlices = getBuySlices(data.sn?.positions, 8, SN_PASTELS);
   const totalBuySlices = getHouseholdBuySlices(data, 10);
   const buyTotal = totalBuyCost(data);
   const topBuy = totalBuySlices[0];
@@ -550,13 +561,13 @@ export function renderPortfolioDashboard(data, quoteState) {
         <h4 class="pf-chart-title">전체 매수 비중</h4>
         ${renderChartSplit(totalBuySlices, splitOpts)}
       </div>
-      <div class="pf-chart-card">
+      <div class="pf-chart-card pf-chart-yj">
         <h4 class="pf-chart-title">영재 매수 비중</h4>
-        ${renderChartSplit(yjBuySlices, splitOpts)}
+        ${renderChartSplit(yjBuySlices, splitOpts, "yj")}
       </div>
-      <div class="pf-chart-card">
+      <div class="pf-chart-card pf-chart-sn">
         <h4 class="pf-chart-title">시온 매수 비중</h4>
-        ${renderChartSplit(snBuySlices, splitOpts)}
+        ${renderChartSplit(snBuySlices, splitOpts, "sn")}
       </div>
     </div>
     <div class="pf-table-section">
@@ -568,7 +579,7 @@ export function renderPortfolioDashboard(data, quoteState) {
 }
 
 export function renderPersonChart(person, label, positions) {
-  const slices = getBuySlices(positions, 8, person === "yj" ? YJ_TINTS : SN_TINTS);
+  const slices = getBuySlices(positions, 8, person === "yj" ? YJ_PASTELS : SN_PASTELS);
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) {
     return `<div class="pf-person-chart pf-person-chart-empty" data-pf-person-chart="${person}">
@@ -577,7 +588,7 @@ export function renderPersonChart(person, label, positions) {
   }
   const tinted = slices.map((s, i) => ({
     ...s,
-    color: (person === "yj" ? YJ_TINTS : SN_TINTS)[i % 5],
+    color: (person === "yj" ? YJ_PASTELS : SN_PASTELS)[i % 8],
   }));
   return `<div class="pf-person-chart" data-pf-person-chart="${person}">
     <div class="pf-person-chart-inner">

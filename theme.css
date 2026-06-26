@@ -2434,9 +2434,24 @@
     .pf-donut-seg {
       transition: opacity .2s ease, stroke-width .2s ease;
     }
-    .pf-donut-seg.is-top {
-      filter: drop-shadow(0 0 4px rgba(59, 130, 246, .35));
+    .pf-chart-tone-yj .pf-donut-seg.is-top {
+      filter: drop-shadow(0 0 4px rgba(90, 143, 201, .4));
     }
+    .pf-chart-tone-yj .pf-donut-glow { stroke: #8eb8e8; }
+    .pf-chart-tone-yj .pf-legend-compact .pf-legend-item.is-active,
+    .pf-chart-tone-yj .pf-legend-compact .pf-legend-item:hover {
+      background: rgba(90, 143, 201, .12);
+    }
+    .pf-chart-yj .pf-chart-title { color: #4a7eb8; }
+    .pf-chart-tone-sn .pf-donut-seg.is-top {
+      filter: drop-shadow(0 0 4px rgba(249, 143, 117, .4));
+    }
+    .pf-chart-tone-sn .pf-donut-glow { stroke: #f8b5a8; }
+    .pf-chart-tone-sn .pf-legend-compact .pf-legend-item.is-active,
+    .pf-chart-tone-sn .pf-legend-compact .pf-legend-item:hover {
+      background: rgba(249, 143, 117, .14);
+    }
+    .pf-chart-sn .pf-chart-title { color: #e07a5f; }
     .pf-donut-seg.dim {
       opacity: .28;
     }
