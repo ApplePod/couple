@@ -833,6 +833,38 @@
       background: var(--red-dim); color: var(--red);
       border-radius: 6px; cursor: pointer; font-size: 1rem; line-height: 1;
     }
+    .invest-detail-table .dl-price-cell,
+    .invest-detail-table .dl-shares-cell,
+    .invest-detail-table .dl-amount-cell {
+      width: 72px;
+      white-space: nowrap;
+    }
+    .invest-detail-table .dl-shares-cell { width: 52px; }
+    .invest-detail-table .dl-price,
+    .invest-detail-table .dl-shares {
+      width: 100%;
+      padding: 7px 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .78rem;
+      box-sizing: border-box;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .invest-detail-table .dl-amount-sum {
+      cursor: default;
+      background: var(--surface2);
+      color: var(--text);
+      font-weight: 600;
+    }
+    .invest-detail-table th:nth-child(2),
+    .invest-detail-table th:nth-child(3),
+    .invest-detail-table th:nth-child(4) {
+      text-align: right;
+    }
     .detail-foot {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);

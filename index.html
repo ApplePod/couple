@@ -887,9 +887,32 @@ function livingCategoryOptions(fixedCat) {
   return [...new Set([...names, ...LIVING_DETAIL_EXTRA])];
 }
 
+function parseSharesInput(v) {
+  const n = String(v ?? '').replace(/,/g, '').trim();
+  if (!n) return 0;
+  return parseFloat(n) || 0;
+}
+
+function calcInvestLineAmount(price, shares) {
+  const p = Number(price) || 0;
+  const s = parseSharesInput(shares);
+  if (!p || !s) return '';
+  return Math.round(p * s);
+}
+
+function syncInvestLineRow(row) {
+  if (!row) return;
+  const priceInp = row.querySelector('.dl-price');
+  const sharesInp = row.querySelector('.dl-shares');
+  const amountInp = row.querySelector('.dl-amount');
+  if (!amountInp) return;
+  const total = calcInvestLineAmount(parseActualInput(priceInp?.value || ''), sharesInp?.value || '');
+  amountInp.value = total !== '' ? formatActualInput(total) : '';
+}
+
 function defaultDetail(it) {
   if (it.detailType === 'invest') {
-    return { type: 'invest', lines: [{ symbol: '', shares: '', amount: '' }] };
+    return { type: 'invest', lines: [{ symbol: '', price: '', shares: '', amount: '' }] };
   }
   if (it.livingBudget) return defaultLivingBudgetDetail();
   if (it.detailType === 'living') {
@@ -932,13 +955,22 @@ function formatDetailAmt(v) {
 }
 
 function renderInvestLines(lines) {
-  return lines.map((ln, i) => `
+  return lines.map((ln, i) => {
+    const priceVal = ln.price !== '' && ln.price != null && ln.price !== undefined
+      ? formatActualInput(Number(ln.price)) : '';
+    const computed = calcInvestLineAmount(ln.price, ln.shares);
+    const amountVal = computed !== ''
+      ? formatActualInput(computed)
+      : formatDetailAmt(ln.amount);
+    return `
     <tr class="detail-line" data-idx="${i}">
       <td class="symbol-ac-cell">${renderSymbolInput(ln.symbol)}</td>
-      <td style="width:56px"><input class="dl-shares" placeholder="주" inputmode="numeric" value="${escAttr(ln.shares)}"></td>
-      <td><input class="dl-amount" placeholder="금액" inputmode="numeric" value="${formatDetailAmt(ln.amount)}"></td>
+      <td class="dl-price-cell"><input class="dl-price" placeholder="단가" inputmode="numeric" value="${priceVal}"></td>
+      <td class="dl-shares-cell"><input class="dl-shares" placeholder="주" inputmode="decimal" value="${escAttr(ln.shares)}"></td>
+      <td class="dl-amount-cell"><input class="dl-amount dl-amount-sum" placeholder="합계" inputmode="numeric" readonly tabindex="-1" value="${amountVal}"></td>
       <td style="width:32px"><button type="button" class="dl-remove" title="삭제">×</button></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function renderLivingLines(lines, fixedCat) {
@@ -982,13 +1014,13 @@ function renderDetailPanel(person, it) {
     </div>`;
   }
 
-  const summaryLabel = it.detailType === 'invest' ? '📋 매수 상세 (종목·주·금액)' : '📋 지출 상세 (분류별)';
+  const summaryLabel = it.detailType === 'invest' ? '📋 매수 상세 (종목·단가·주·합계)' : '📋 지출 상세 (분류별)';
 
   if (it.detailType === 'invest') {
     return `<div class="item-details" data-person="${person}" data-id="${it.id}" data-type="invest" hidden>
       <div class="detail-head">${summaryLabel}</div>
-      <table class="detail-table">
-        <thead><tr><th>종목</th><th>주</th><th>금액</th><th></th></tr></thead>
+      <table class="detail-table invest-detail-table">
+        <thead><tr><th>종목</th><th>단가</th><th>주</th><th>합계</th><th></th></tr></thead>
         <tbody class="detail-body">${renderInvestLines(detail.lines)}</tbody>
       </table>
       <div class="detail-foot">
@@ -1031,10 +1063,15 @@ function readDetailFromWrap(detailsEl) {
   }
   const lines = [...detailsEl.querySelectorAll('.detail-line')].map(row => {
     if (type === 'invest') {
+      const price = parseActualInput(row.querySelector('.dl-price')?.value || '');
+      const shares = row.querySelector('.dl-shares')?.value || '';
+      let amount = calcInvestLineAmount(price, shares);
+      if (amount === '') amount = parseActualInput(row.querySelector('.dl-amount')?.value || '');
       return {
         symbol: row.querySelector('.dl-symbol')?.value || '',
-        shares: row.querySelector('.dl-shares')?.value || '',
-        amount: parseActualInput(row.querySelector('.dl-amount')?.value || ''),
+        price: price === '' ? '' : price,
+        shares,
+        amount,
       };
     }
     return {
@@ -1400,7 +1437,7 @@ function attachTrackerEvents() {
         return;
       }
       if (it.detailType === 'invest') {
-        detail.lines.push({ symbol: '', shares: '', amount: '' });
+        detail.lines.push({ symbol: '', price: '', shares: '', amount: '' });
         detailsEl.querySelector('.detail-body').insertAdjacentHTML('beforeend', renderInvestLines([detail.lines.at(-1)]));
       } else {
         detail.lines.push({ category: it.livingFixedCat || LIVING_CATS[0].name, amount: '' });
@@ -1531,6 +1568,16 @@ function attachTrackerEvents() {
       scheduleSave();
       return;
     }
+    const investField = e.target.closest('.dl-price, .dl-shares');
+    if (investField) {
+      const detailsEl = investField.closest('.item-details[data-type="invest"]');
+      if (detailsEl) {
+        syncInvestLineRow(investField.closest('.detail-line'));
+        clearTimeout(detailsEl._detailTimer);
+        detailsEl._detailTimer = setTimeout(() => syncDetailToStore(detailsEl), 400);
+        return;
+      }
+    }
     const detailsEl = e.target.closest('.item-details');
     if (detailsEl) {
       clearTimeout(detailsEl._detailTimer);
@@ -1582,9 +1629,20 @@ function attachTrackerEvents() {
     }
     const amt = e.target.closest('.dl-amount');
     if (amt) {
+      if (amt.classList.contains('dl-amount-sum')) return;
       const n = parseActualInput(amt.value);
       amt.value = n ? formatActualInput(n) : '';
       const detailsEl = amt.closest('.item-details');
+      if (detailsEl) syncDetailToStore(detailsEl);
+      return;
+    }
+    const priceInp = e.target.closest('.dl-price');
+    if (priceInp) {
+      const n = parseActualInput(priceInp.value);
+      priceInp.value = n ? formatActualInput(n) : '';
+      const row = priceInp.closest('.detail-line');
+      syncInvestLineRow(row);
+      const detailsEl = priceInp.closest('.item-details');
       if (detailsEl) syncDetailToStore(detailsEl);
     }
   }, true);
