@@ -117,8 +117,7 @@ function renderTradeRow(person, posId, trade) {
   return `<tr class="pf-trade ${isBuy ? "pf-trade-buy" : "pf-trade-sell"}" data-person="${person}" data-pos-id="${esc(posId)}" data-trade-type="${trade.type}" data-trade-id="${esc(trade.id)}">
     <td><span class="pf-trade-tag ${isBuy ? "buy" : "sell"}">${isBuy ? "매수" : "매도"}</span></td>
     <td><select class="pf-broker">${brokerOptions(trade.broker || BROKERS[0])}</select></td>
-    <td class="pf-date-buy">${isBuy ? `<input type="date" class="pf-buy-date" value="${esc(trade.date || "")}">` : ""}</td>
-    <td class="pf-date-sell">${!isBuy ? `<input type="date" class="pf-sell-date" value="${esc(trade.date || "")}">` : ""}</td>
+    <td><input type="date" class="pf-trade-date" value="${esc(trade.date || "")}"></td>
     <td><input type="text" class="pf-price" inputmode="numeric" placeholder="단가" value="${trade.price !== "" && trade.price != null ? Number(trade.price).toLocaleString("ko-KR") : ""}"></td>
     <td><input type="text" class="pf-shares" inputmode="decimal" placeholder="수량" value="${esc(trade.shares ?? "")}"></td>
     <td class="pf-lot-total">${lineTotal ? fmtWon(lineTotal) : "—"}</td>
@@ -173,7 +172,7 @@ function renderPosition(person, pos, renderSymbolInput) {
       </div>
       <table class="pf-lot-table pf-trade-table">
         <thead>
-          <tr><th></th><th>증권사</th><th>매수일</th><th>매도일</th><th>단가</th><th>수량</th><th>합계</th><th></th></tr>
+          <tr><th></th><th>증권사</th><th>거래일</th><th>단가</th><th>수량</th><th>합계</th><th></th></tr>
         </thead>
         <tbody>${trades.map((t) => renderTradeRow(person, pos.id, t)).join("")}</tbody>
       </table>
@@ -240,10 +239,7 @@ function readPositionFromDom(posEl) {
     const record = {
       id: row.dataset.tradeId || uid(type === "buy" ? "lot" : "sell"),
       broker: row.querySelector(".pf-broker")?.value || BROKERS[0],
-      date:
-        type === "buy"
-          ? row.querySelector(".pf-buy-date")?.value || ""
-          : row.querySelector(".pf-sell-date")?.value || "",
+      date: row.querySelector(".pf-trade-date")?.value || "",
       price: parseNum(row.querySelector(".pf-price")?.value),
       shares: row.querySelector(".pf-shares")?.value?.trim() || "",
     };
@@ -483,11 +479,11 @@ function attachPortfolioEvents(section, renderSymbolInput) {
   });
 
   section.addEventListener("change", (e) => {
-    if (e.target.closest(".pf-broker, .pf-buy-date, .pf-sell-date")) {
+    if (e.target.closest(".pf-broker, .pf-trade-date")) {
       syncFromDom();
       const posEl = e.target.closest(".pf-position");
       if (posEl) {
-        if (e.target.closest(".pf-buy-date, .pf-sell-date")) resortTradeTable(posEl);
+        if (e.target.closest(".pf-trade-date")) resortTradeTable(posEl);
         updatePositionHead(posEl);
       }
       refreshSummaries();

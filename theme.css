@@ -1901,8 +1901,7 @@
     }
     .pf-lot-table td { padding: 6px 4px; vertical-align: middle; }
     .pf-lot-table .pf-broker,
-    .pf-lot-table .pf-buy-date,
-    .pf-lot-table .pf-sell-date,
+    .pf-lot-table .pf-trade-date,
     .pf-lot-table .pf-price,
     .pf-lot-table .pf-shares,
     .pf-lot-table .pf-date {
@@ -1916,7 +1915,7 @@
       background: var(--surface);
       box-sizing: border-box;
     }
-    .pf-lot-table .pf-date { padding: 5px 6px; }
+    .pf-lot-table .pf-trade-date { padding: 5px 6px; }
     .pf-lot-total {
       font-weight: 700;
       font-variant-numeric: tabular-nums;
@@ -1995,7 +1994,6 @@
     }
     .pf-trade-tag.buy { color: var(--yj); background: var(--yj-glow); }
     .pf-trade-tag.sell { color: var(--red); background: var(--red-dim); }
-    .pf-date-buy, .pf-date-sell { min-width: 7.2rem; }
     .pf-trade-remove {
       width: 24px;
       height: 24px;
