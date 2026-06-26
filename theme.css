@@ -2355,22 +2355,27 @@
       color: #111827;
     }
     .pf-chart-split {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
       align-items: center;
-      gap: 12px 16px;
-      min-height: 128px;
+      gap: 4px 10px;
+      min-height: 132px;
     }
     .pf-chart-donut-col {
-      flex: 0 0 auto;
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 132px;
+      padding: 6px 4px;
+    }
+    .pf-chart-donut-col .pf-donut {
+      margin: 0 auto;
     }
     .pf-chart-legend-col {
-      flex: 1;
       min-width: 0;
       display: flex;
       align-items: center;
+      justify-content: flex-start;
     }
     .pf-legend-compact {
       list-style: none;
