@@ -1938,41 +1938,35 @@
       margin-top: 10px;
       flex-wrap: wrap;
     }
-    .pf-trade-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 8px;
+    .pf-trade-tabs {
+      display: flex;
+      gap: 6px;
+      margin: 10px 0 8px;
     }
-    .pf-trade-col {
-      min-width: 0;
-      background: var(--surface2);
-      border-radius: 10px;
-      padding: 10px 8px;
-    }
-    .pf-trade-label {
-      font-size: .72rem;
-      font-weight: 800;
-      margin-bottom: 8px;
-    }
-    .pf-trade-label.buy { color: var(--yj); }
-    .pf-trade-label.sell { color: var(--red); }
-    .pf-trade-col .pf-add-lot,
-    .pf-trade-col .pf-add-sell {
-      width: 100%;
-      margin-top: 8px;
-      padding: 7px 10px;
+    .pf-trade-tab {
+      flex: 1;
+      padding: 8px 10px;
       border-radius: 8px;
       font-family: inherit;
-      font-size: .72rem;
-      font-weight: 600;
+      font-size: .74rem;
+      font-weight: 700;
       cursor: pointer;
-      border: 1px dashed var(--border);
+      border: 1px solid var(--border);
       background: #fff;
-      color: var(--text);
+      color: var(--muted);
     }
-    .pf-trade-col .pf-add-lot:hover { border-color: var(--yj); color: var(--yj); }
-    .pf-trade-col .pf-add-sell:hover { border-color: var(--red); color: var(--red); }
+    .pf-trade-tab:hover { border-color: var(--main); color: var(--text); }
+    .pf-trade-tab.active[data-trade-tab="buy"] {
+      border-color: var(--yj);
+      background: var(--yj-glow);
+      color: var(--yj);
+    }
+    .pf-trade-tab.active[data-trade-tab="sell"] {
+      border-color: var(--red);
+      background: var(--red-dim);
+      color: var(--red);
+    }
+    .pf-trade-panel { margin-bottom: 4px; }
     .pf-sell-empty td {
       text-align: center;
       color: var(--muted);
@@ -2005,6 +1999,7 @@
     .pf-col-summary .loss { color: var(--red); }
     .pf-pnl em { font-style: normal; font-size: .58rem; color: var(--muted); margin-right: 2px; }
     .pf-add-lot,
+    .pf-add-sell,
     .pf-remove-pos,
     .pf-add-pos {
       padding: 8px 12px;
@@ -2018,7 +2013,9 @@
       color: var(--text);
     }
     .pf-add-lot:hover,
+    .pf-add-sell:hover,
     .pf-add-pos:hover { border-color: var(--main); color: var(--main); }
+    .pf-add-sell:hover { border-color: var(--red); color: var(--red); }
     .pf-remove-pos {
       margin-left: auto;
       color: var(--red);
@@ -2039,7 +2036,6 @@
     @media (max-width: 700px) {
       .pf-household-grid { grid-template-columns: 1fr; }
       .pf-dual { grid-template-columns: 1fr; }
-      .pf-trade-grid { grid-template-columns: 1fr; }
       .pf-pos-head { flex-wrap: wrap; }
       .pf-pos-head-stats {
         width: 100%;
