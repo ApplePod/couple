@@ -28,6 +28,7 @@
     <button class="main-nav-btn" data-page="plan">📊 월정산 계획</button>
     <button class="main-nav-btn active" data-page="checklist">✅ 체크리스트</button>
     <button class="main-nav-btn" data-page="forecast">📈 투자 전망</button>
+    <button class="main-nav-btn" data-page="portfolio">💼 포트폴리오</button>
   </nav>
 
   <!-- ═══ 계획 페이지 ═══ -->
@@ -54,12 +55,19 @@
   <div class="main-page" id="page-forecast">
     <div class="forecast-page" id="forecast-section"></div>
   </div>
+
+  <!-- ═══ 포트폴리오 페이지 ═══ -->
+  <div class="main-page" id="page-portfolio">
+    <div class="portfolio-page" id="portfolio-section"></div>
+  </div>
 </div>
 
 <script src="supabase-config.js"></script>
 <script type="module">
 import { initSymbolSearch, attachSymbolAutocomplete, renderSymbolInput } from './symbol-search.js';
 import { initStore, loadChecks, persistChecksLocal, saveChecksToCloud, fetchRemoteChecks, mergeChecks, markDirty, clearDirty, setLastSyncedChecks, getCheck, setCheck, getActual, setActual, getDetail, setDetail, getDeposit, setDeposit, getSavingsExtra, setSavingsExtra, getMonthlyExtra, setMonthlyExtra, getHiddenItems, setHiddenItems } from './store.js';
+import { initPortfolioStore } from './portfolio-store.js';
+import { initPortfolioModule, setPortfolioFromRemote } from './portfolio.js';
 import {
   INVEST_CATEGORIES, PLAN_START, ANNUAL_LIMIT_PER_PERSON,
   aggregateActualInvestments, aggregateProjectedInvestments,
@@ -2092,7 +2100,10 @@ const store = await initStore(applyRemoteChecks);
 storeMode = store.mode;
 lastCloudJson = checksJson(budgetChecks);
 startRemotePolling();
+const pfStore = await initPortfolioStore(setPortfolioFromRemote);
 await initSymbolSearch();
+initPortfolioModule(renderSymbolInput, pfStore.mode);
+attachSymbolAutocomplete(document.getElementById('tracker-section'));
 renderTracker();
 </script>
 </body>

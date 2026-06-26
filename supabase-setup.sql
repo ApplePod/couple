@@ -24,6 +24,10 @@ insert into budget_checks (id, checks)
 values ('sion_checks', '{}'::jsonb)
 on conflict (id) do nothing;
 
+insert into budget_checks (id, checks)
+values ('sion_portfolio', '{"yj":{"positions":[]},"sn":{"positions":[]}}'::jsonb)
+on conflict (id) do nothing;
+
 -- RLS: anon 키로 읽기/쓰기 허용 (둘만 쓰는 비공개 앱용)
 alter table budget_checks enable row level security;
 

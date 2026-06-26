@@ -295,6 +295,10 @@ function selectItem(wrap, item) {
   const input = wrap.querySelector(".dl-symbol");
   if (!input || !item) return;
   input.value = item.name;
+  if (item.code) input.dataset.symbolCode = item.code;
+  else delete input.dataset.symbolCode;
+  if (item.market) input.dataset.symbolMarket = item.market;
+  else delete input.dataset.symbolMarket;
   closeList(wrap);
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
