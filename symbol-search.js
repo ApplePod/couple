@@ -1,35 +1,39 @@
 /**
- * 종목 자동완성 — 국내(kr-symbols.json) + 미국(Yahoo Search via Edge Function)
+ * 종목 자동완성 — 국내·미국 로컬 DB (kr-symbols.json + us-symbols.json)
  */
-const SYMBOLS_URL = "data/kr-symbols.json";
+const KR_SYMBOLS_URL = "data/kr-symbols.json";
+const US_SYMBOLS_URL = "data/us-symbols.json";
 const MAX_RESULTS = 12;
 const MIN_QUERY_LEN = 1;
-const US_SEARCH_MIN = 2;
-const US_SEARCH_DEBOUNCE_MS = 280;
 
-/** 자주 찾는 종목 (동점·접두어 일치 시 우선) */
-const POPULAR_CODES = new Set([
+const POPULAR_KR = new Set([
   "005930", "000660", "035420", "005380", "035720", "000270", "051910", "006400",
   "003670", "068270", "105560", "055550", "032830", "015760", "034730",
 ]);
 
-let symbols = [];
+const POPULAR_US = new Set([
+  "AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "BRK-B", "V",
+  "INFQ", "CCXI", "TIP", "SCHP", "SPY", "QQQ",
+]);
+
+let krSymbols = [];
+let usSymbols = [];
 let loadPromise = null;
-let usSearchSeq = 0;
 
 export function initSymbolSearch() {
   if (!loadPromise) {
-    loadPromise = fetch(SYMBOLS_URL)
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status));
-        return r.json();
-      })
-      .then((data) => {
-        symbols = Array.isArray(data) ? data : [];
+    loadPromise = Promise.all([
+      fetch(KR_SYMBOLS_URL).then((r) => (r.ok ? r.json() : [])),
+      fetch(US_SYMBOLS_URL).then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([kr, us]) => {
+        krSymbols = Array.isArray(kr) ? kr : [];
+        usSymbols = Array.isArray(us) ? us : [];
       })
       .catch((e) => {
         console.warn("[symbol-search] 목록 로드 실패:", e);
-        symbols = [];
+        krSymbols = [];
+        usSymbols = [];
       });
   }
   return loadPromise;
@@ -39,49 +43,19 @@ function normQ(q) {
   return String(q ?? "").trim();
 }
 
-function symbolSearchUrl() {
-  const url = window.SUPABASE_CONFIG?.url;
-  if (!url) return null;
-  return `${url.replace(/\/$/, "")}/functions/v1/portfolio-symbol-search`;
-}
-
-async function fetchUsSymbolSearch(query, limit = MAX_RESULTS) {
-  const endpoint = symbolSearchUrl();
-  const anonKey = window.SUPABASE_CONFIG?.anonKey;
-  if (!endpoint || !anonKey) return [];
-
-  try {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${anonKey}`,
-        apikey: anonKey,
-      },
-      body: JSON.stringify({ q: query, limit }),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data.results) ? data.results : [];
-  } catch (e) {
-    console.warn("[symbol-search] 미국 검색 실패:", e);
-    return [];
-  }
-}
-
 function shouldSearchUs(query) {
   const q = normQ(query);
-  if (q.length < US_SEARCH_MIN) return false;
-  if (/^\d+$/.test(compact(q))) return false;
-  return true;
+  if (!q || /^\d+$/.test(compact(q))) return false;
+  return /[a-zA-Z]/.test(q);
 }
 
-function mergeSearchResults(kr, us, limit = MAX_RESULTS) {
-  const seen = new Set(kr.map((s) => s.code));
+function mergeResults(kr, us, limit = MAX_RESULTS) {
+  const seen = new Set(kr.map((s) => `${s.market}:${s.code}`));
   const out = [...kr];
   for (const s of us) {
-    if (!s?.code || seen.has(s.code)) continue;
-    seen.add(s.code);
+    const key = `${s.market}:${s.code}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(s);
     if (out.length >= limit) break;
   }
@@ -100,6 +74,8 @@ const QUERY_ALIASES = [
   ["플러스", "plus"],
   ["라이즈", "rise"],
   ["아이비케이", "ibk"],
+  ["인플레이션", "inflation"],
+  ["인플레", "inflation"],
 ];
 
 function expandQuery(q) {
@@ -115,7 +91,6 @@ function expandQuery(q) {
   return out;
 }
 
-/** 글자만 모두 포함 (순서 무관, 느슨 매칭) */
 function charBagScore(comp, qCompact) {
   if (qCompact.length < 2) return 0;
   const need = new Map();
@@ -128,11 +103,10 @@ function charBagScore(comp, qCompact) {
   return 85 + qCompact.length * 10;
 }
 
-/** 검색어 단어가 종목명 어디에든 포함되는 비율 */
 function wordCoverageScore(s, qRaw) {
   const qWords = qRaw.split(/\s+/).map(compact).filter((w) => w.length > 0);
   if (qWords.length < 2) return 0;
-  const blob = compact([s.name, s.abbr, s.eng].filter(Boolean).join(" "));
+  const blob = compact([s.name, s.abbr, s.eng, s.code].filter(Boolean).join(" "));
   let hit = 0;
   for (const w of qWords) {
     if (blob.includes(w)) hit++;
@@ -146,12 +120,10 @@ function fold(s) {
   return String(s ?? "").toLowerCase();
 }
 
-/** 공백·기호 제거 후 비교용 (KODEX 200 ↔ kodex200) */
 function compact(s) {
   return fold(s).replace(/[\s\-_.·()/&,+]/g, "");
 }
 
-/** needle 글자가 hay에 순서대로 얼마나 들어가는지 (불연속 허용) */
 function subsequenceScore(hay, needle) {
   if (!needle || !hay) return 0;
   let hi = 0;
@@ -210,7 +182,7 @@ function fieldScore(field, qRaw, qCompact, digitsOnly, isCode) {
   return score;
 }
 
-function symbolScore(s, q) {
+function symbolScore(s, q, popular) {
   const qRaw = fold(q);
   const qCompact = compact(q);
   if (!qCompact) return 0;
@@ -219,7 +191,7 @@ function symbolScore(s, q) {
   const fields = [
     { f: s.name, w: 1, code: false },
     { f: s.abbr, w: 1.08, code: false },
-    { f: s.code, w: 1.1, code: true },
+    { f: s.code, w: 1.15, code: true },
     { f: s.eng, w: 0.88, code: false },
   ];
 
@@ -251,7 +223,7 @@ function symbolScore(s, q) {
   }
 
   best = Math.max(best, wordCoverageScore(s, qRaw));
-  if (POPULAR_CODES.has(s.code)) best += 75;
+  if (popular?.has(s.code)) best += 75;
   return best;
 }
 
@@ -263,23 +235,22 @@ function minScoreFor(q) {
   return 40;
 }
 
-/** 대소문자 무시 · 부분·순서·단어 일치 · 일치도 높은 순 */
-export function searchKrSymbols(query, limit = MAX_RESULTS) {
+function searchSymbolList(list, query, limit, popular, locale) {
   const q = expandQuery(query);
-  if (q.length < MIN_QUERY_LEN || !symbols.length) return [];
+  if (q.length < MIN_QUERY_LEN || !list.length) return [];
   const floor = minScoreFor(q);
   const qTokens = fold(q)
     .split(/\s+/)
     .map(compact)
     .filter((t) => t.length > 0);
   const scored = [];
-  for (const s of symbols) {
+  for (const s of list) {
     if (qTokens.length > 1) {
-      const blob = compact([s.name, s.abbr, s.eng].filter(Boolean).join(" "));
+      const blob = compact([s.name, s.abbr, s.eng, s.code].filter(Boolean).join(" "));
       const hit = qTokens.filter((t) => blob.includes(t)).length;
       if (hit < qTokens.length) continue;
     }
-    const score = symbolScore(s, q);
+    const score = symbolScore(s, q, popular);
     if (score < floor) continue;
     scored.push({ s, score });
   }
@@ -288,42 +259,33 @@ export function searchKrSymbols(query, limit = MAX_RESULTS) {
     const al = compact(a.s.name).length;
     const bl = compact(b.s.name).length;
     if (al !== bl) return al - bl;
-    return (a.s.name || "").localeCompare(b.s.name || "", "ko");
+    return (a.s.name || "").localeCompare(b.s.name || "", locale);
   });
   return scored.slice(0, limit).map((x) => x.s);
 }
 
-function usTickerCandidate(query) {
-  const raw = normQ(query);
-  const upper = raw.toUpperCase();
-  if (!/^[A-Z][A-Z0-9.-]{0,9}$/.test(upper)) return null;
-  if (/^\d+$/.test(upper)) return null;
-  return { code: upper, name: upper, market: "US", abbr: upper };
+export function searchKrSymbols(query, limit = MAX_RESULTS) {
+  return searchSymbolList(krSymbols, query, limit, POPULAR_KR, "ko");
 }
 
-/** 국내 즉시 검색 (동기) */
-export function searchSymbolsLocal(query, limit = MAX_RESULTS) {
-  const kr = searchKrSymbols(query, limit);
-  const us = usTickerCandidate(query);
-  if (!us) return kr;
-  if (kr.some((s) => s.code === us.code)) return kr;
-  return [us, ...kr].slice(0, limit);
+export function searchUsSymbols(query, limit = MAX_RESULTS) {
+  return searchSymbolList(usSymbols, query, limit, POPULAR_US, "en");
 }
 
-/** 국내 + 미국 Yahoo 검색 (비동기) */
-export async function searchSymbols(query, limit = MAX_RESULTS) {
+/** 국내 + 미국 로컬 DB */
+export function searchSymbols(query, limit = MAX_RESULTS) {
   const q = expandQuery(query);
-  const kr = searchKrSymbols(q, limit);
-  if (!shouldSearchUs(q)) {
-    return searchSymbolsLocal(q, limit);
-  }
-  const us = await fetchUsSymbolSearch(q, limit);
-  return mergeSearchResults(kr, us, limit);
+  const krLimit = shouldSearchUs(q) ? Math.ceil(limit / 2) : limit;
+  const kr = searchKrSymbols(q, krLimit);
+  if (!shouldSearchUs(q)) return kr;
+  const us = searchUsSymbols(q, limit);
+  return mergeResults(kr, us, limit);
 }
 
 function marketLabel(s) {
   if (s.market === "US") {
-    return s.exchange ? `미국 · ${s.exchange}` : "미국";
+    const kind = s.etf ? "ETF" : "주식";
+    return s.exchange ? `미국 · ${s.exchange} · ${kind}` : `미국 · ${kind}`;
   }
   if (s.market === "KOSPI") return "코스피";
   if (s.market === "KOSDAQ") return "코스닥";
@@ -331,12 +293,7 @@ function marketLabel(s) {
   return s.market || "";
 }
 
-function renderList(listEl, items, opts = {}) {
-  if (opts.loading) {
-    listEl.hidden = false;
-    listEl.innerHTML = `<div class="symbol-ac-status">미국 종목 검색 중…</div>`;
-    return;
-  }
+function renderList(listEl, items) {
   if (!items.length) {
     listEl.hidden = true;
     listEl.innerHTML = "";
@@ -371,49 +328,22 @@ function closeList(wrap) {
   list.hidden = true;
   list.innerHTML = "";
   wrap.querySelector(".dl-symbol")?.removeAttribute("aria-expanded");
-  if (wrap._usSearchTimer) {
-    clearTimeout(wrap._usSearchTimer);
-    wrap._usSearchTimer = null;
-  }
 }
 
-async function openList(wrap, query) {
+function openList(wrap, query) {
   const input = wrap.querySelector(".dl-symbol");
   const list = wrap.querySelector(".symbol-ac-list");
   if (!input || !list) return;
-
   const q = normQ(query);
   if (!q) {
     closeList(wrap);
     return;
   }
-
   delete wrap.dataset.acActive;
-  const local = searchSymbolsLocal(q, MAX_RESULTS);
-
-  if (!shouldSearchUs(q)) {
-    wrap._acItems = local;
-    renderList(list, local);
-    input.setAttribute("aria-expanded", local.length ? "true" : "false");
-    return;
-  }
-
-  const seq = ++usSearchSeq;
-  wrap._searchSeq = seq;
-  wrap._acItems = local;
-  renderList(list, local, { loading: true });
-  input.setAttribute("aria-expanded", "true");
-
-  if (wrap._usSearchTimer) clearTimeout(wrap._usSearchTimer);
-  wrap._usSearchTimer = setTimeout(async () => {
-    wrap._usSearchTimer = null;
-    const us = await fetchUsSymbolSearch(expandQuery(q), MAX_RESULTS);
-    if (wrap._searchSeq !== seq) return;
-    const merged = mergeSearchResults(searchKrSymbols(expandQuery(q), MAX_RESULTS), us, MAX_RESULTS);
-    wrap._acItems = merged;
-    renderList(list, merged);
-    input.setAttribute("aria-expanded", merged.length ? "true" : "false");
-  }, US_SEARCH_DEBOUNCE_MS);
+  const items = searchSymbols(q, MAX_RESULTS);
+  wrap._acItems = items;
+  renderList(list, items);
+  input.setAttribute("aria-expanded", items.length ? "true" : "false");
 }
 
 function selectItem(wrap, item) {
@@ -449,13 +379,13 @@ export function attachSymbolAutocomplete(section) {
     if (!input) return;
     const wrap = input.closest(".symbol-ac-wrap");
     if (!wrap) return;
-    void openList(wrap, input.value);
+    openList(wrap, input.value);
   });
 
   section.addEventListener("focusin", (e) => {
     const input = e.target.closest(".dl-symbol");
     if (!input?.value?.trim()) return;
-    void openList(input.closest(".symbol-ac-wrap"), input.value);
+    openList(input.closest(".symbol-ac-wrap"), input.value);
   });
 
   section.addEventListener("keydown", (e) => {

@@ -3,6 +3,3 @@ project_id = "vxiiqsdaadmrbnoteytj"
 
 [functions.portfolio-quotes]
 verify_jwt = false
-
-[functions.portfolio-symbol-search]
-verify_jwt = false
