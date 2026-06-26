@@ -34,6 +34,7 @@ let saveTimer = null;
 let cloudSaveInFlight = false;
 let lastCloudJson = JSON.stringify(portfolioData);
 const expandedIds = new Set();
+const portfolioEditMode = { yj: false, sn: false };
 
 function pfJson(d) {
   return JSON.stringify(d);
@@ -93,6 +94,67 @@ function brokerOptions(selected) {
   ).join("");
 }
 
+function formatTradeDate(iso) {
+  if (!iso) return "날짜";
+  const parts = String(iso).split("-");
+  if (parts.length !== 3) return "날짜";
+  const [y, m, d] = parts;
+  return `${y.slice(-2)}.${m}.${d}`;
+}
+
+function renderTradeDatePill(date) {
+  const has = !!date;
+  return `<div class="ci-date-wrap pf-trade-date-wrap">
+    <button type="button" class="ci-date-pill${has ? " has-value" : ""}" aria-label="거래일 선택">
+      <span class="ci-date-text">${formatTradeDate(date)}</span>
+    </button>
+    <input type="date" class="ci-date-input pf-trade-date-input" value="${esc(date || "")}" tabindex="-1" aria-hidden="true">
+  </div>`;
+}
+
+function syncTradeDatePill(input) {
+  const wrap = input.closest(".ci-date-wrap");
+  const pill = wrap?.querySelector(".ci-date-pill");
+  const text = pill?.querySelector(".ci-date-text");
+  if (!pill || !text) return;
+  text.textContent = formatTradeDate(input.value);
+  pill.classList.toggle("has-value", !!input.value);
+}
+
+function openPfDatePicker(wrap) {
+  const input = wrap?.querySelector(".ci-date-input");
+  if (!input) return;
+  if (typeof input.showPicker === "function") {
+    try {
+      input.showPicker();
+      return;
+    } catch (_) { /* fall through */ }
+  }
+  const pill = wrap.querySelector(".ci-date-pill");
+  const rect = pill?.getBoundingClientRect();
+  const prev = input.style.cssText;
+  input.style.cssText = [
+    "position:fixed",
+    `left:${rect?.left ?? 0}px`,
+    `top:${rect?.top ?? 0}px`,
+    `width:${rect?.width ?? 76}px`,
+    `height:${rect?.height ?? 30}px`,
+    "opacity:0.01",
+    "pointer-events:auto",
+    "z-index:9999",
+    "border:0",
+    "margin:0",
+    "padding:0",
+    "clip:auto",
+    "overflow:visible",
+  ].join(";");
+  input.focus({ preventScroll: true });
+  input.click();
+  setTimeout(() => {
+    input.style.cssText = prev;
+  }, 400);
+}
+
 function mergeTrades(pos) {
   const items = [
     ...(pos.lots || []).map((l) => ({ ...l, type: "buy" })),
@@ -115,13 +177,13 @@ function renderTradeRow(person, posId, trade) {
   const pr = Number(trade.price) || 0;
   const lineTotal = sh > 0 && pr >= 0 ? sh * pr : 0;
   return `<tr class="pf-trade ${isBuy ? "pf-trade-buy" : "pf-trade-sell"}" data-person="${person}" data-pos-id="${esc(posId)}" data-trade-type="${trade.type}" data-trade-id="${esc(trade.id)}">
-    <td><span class="pf-trade-tag ${isBuy ? "buy" : "sell"}">${isBuy ? "매수" : "매도"}</span></td>
-    <td><select class="pf-broker">${brokerOptions(trade.broker || BROKERS[0])}</select></td>
-    <td><input type="date" class="pf-trade-date" value="${esc(trade.date || "")}"></td>
-    <td><input type="text" class="pf-price" inputmode="numeric" placeholder="단가" value="${trade.price !== "" && trade.price != null ? Number(trade.price).toLocaleString("ko-KR") : ""}"></td>
-    <td><input type="text" class="pf-shares" inputmode="decimal" placeholder="수량" value="${esc(trade.shares ?? "")}"></td>
+    <td class="pf-td-tag"><span class="pf-trade-tag ${isBuy ? "buy" : "sell"}">${isBuy ? "매수" : "매도"}</span></td>
+    <td class="pf-td-broker"><select class="pf-broker">${brokerOptions(trade.broker || BROKERS[0])}</select></td>
+    <td class="pf-td-date">${renderTradeDatePill(trade.date)}</td>
+    <td class="pf-td-price"><input type="text" class="pf-price" inputmode="numeric" placeholder="단가" value="${trade.price !== "" && trade.price != null ? Number(trade.price).toLocaleString("ko-KR") : ""}"></td>
+    <td class="pf-td-shares"><input type="text" class="pf-shares" inputmode="decimal" placeholder="0" value="${esc(trade.shares ?? "")}"></td>
     <td class="pf-lot-total">${lineTotal ? fmtWon(lineTotal) : "—"}</td>
-    <td><button type="button" class="pf-trade-remove" title="내역 삭제" aria-label="삭제">×</button></td>
+    <td class="pf-trade-act"><button type="button" class="ci-row-remove" title="내역 삭제" aria-label="삭제">×</button></td>
   </tr>`;
 }
 
@@ -168,11 +230,11 @@ function renderPosition(person, pos, renderSymbolInput) {
       <div class="pf-trade-bar">
         <button type="button" class="pf-add-lot pf-trade-btn buy" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매수 내역</button>
         <button type="button" class="pf-add-sell pf-trade-btn sell" data-person="${person}" data-pos-id="${esc(pos.id)}">+ 매도 내역</button>
-        <button type="button" class="pf-remove-pos" data-person="${person}" data-pos-id="${esc(pos.id)}">종목 삭제</button>
+        <button type="button" class="pf-remove-pos pf-edit-only" data-person="${person}" data-pos-id="${esc(pos.id)}">종목 삭제</button>
       </div>
       <table class="pf-lot-table pf-trade-table">
         <thead>
-          <tr><th></th><th>증권사</th><th>거래일</th><th>단가</th><th>수량</th><th>합계</th><th></th></tr>
+          <tr><th></th><th>증권사</th><th>거래일</th><th>단가</th><th>수량</th><th>합계</th><th class="pf-trade-act-h"></th></tr>
         </thead>
         <tbody>${trades.map((t) => renderTradeRow(person, pos.id, t)).join("")}</tbody>
       </table>
@@ -182,13 +244,17 @@ function renderPosition(person, pos, renderSymbolInput) {
 
 function renderPersonColumn(person, label, colorClass, data, renderSymbolInput) {
   const summary = calcPersonSummary(data.positions);
+  const editing = portfolioEditMode[person];
   const positions = (data.positions || [])
     .map((p) => renderPosition(person, p, renderSymbolInput))
     .join("");
 
-  return `<div class="pf-col ${colorClass}">
+  return `<div class="pf-col ${colorClass}${editing ? " edit-mode" : ""}" data-person="${person}">
     <div class="pf-col-head">
-      <h3>${label}</h3>
+      <div class="pf-col-head-row">
+        <h3>${label}</h3>
+        <button type="button" class="pf-edit-btn tracker-edit-btn" data-person="${person}">${editing ? "완료" : "편집"}</button>
+      </div>
       <div class="pf-col-summary">
         <span>종목 <strong>${summary.positionCount}</strong></span>
         <span>잔여원금 <strong>${summary.totalCost ? fmtWon(summary.totalCost) : "—"}</strong></span>
@@ -239,7 +305,7 @@ function readPositionFromDom(posEl) {
     const record = {
       id: row.dataset.tradeId || uid(type === "buy" ? "lot" : "sell"),
       broker: row.querySelector(".pf-broker")?.value || BROKERS[0],
-      date: row.querySelector(".pf-trade-date")?.value || "",
+      date: row.querySelector(".pf-trade-date-input, .ci-date-input")?.value || "",
       price: parseNum(row.querySelector(".pf-price")?.value),
       shares: row.querySelector(".pf-shares")?.value?.trim() || "",
     };
@@ -370,6 +436,20 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       return;
     }
 
+    const datePill = e.target.closest(".ci-date-pill");
+    if (datePill?.closest("#portfolio-section")) {
+      openPfDatePicker(datePill.closest(".ci-date-wrap"));
+      return;
+    }
+
+    const editBtn = e.target.closest(".pf-edit-btn");
+    if (editBtn) {
+      const person = editBtn.dataset.person;
+      portfolioEditMode[person] = !portfolioEditMode[person];
+      renderPortfolioPage(renderSymbolInput);
+      return;
+    }
+
     const addPos = e.target.closest(".pf-add-pos");
     if (addPos) {
       const person = addPos.dataset.person;
@@ -430,7 +510,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
       return;
     }
 
-    const rmTrade = e.target.closest(".pf-trade-remove");
+    const rmTrade = e.target.closest(".pf-trade .ci-row-remove");
     if (rmTrade) {
       const row = rmTrade.closest(".pf-trade");
       const posEl = rmTrade.closest(".pf-position");
@@ -479,11 +559,13 @@ function attachPortfolioEvents(section, renderSymbolInput) {
   });
 
   section.addEventListener("change", (e) => {
-    if (e.target.closest(".pf-broker, .pf-trade-date")) {
+    if (e.target.closest(".pf-broker, .pf-trade-date-input, .ci-date-input")) {
       syncFromDom();
       const posEl = e.target.closest(".pf-position");
+      const dateInp = e.target.closest(".pf-trade-date-input, .ci-date-input");
+      if (dateInp) syncTradeDatePill(dateInp);
       if (posEl) {
-        if (e.target.closest(".pf-trade-date")) resortTradeTable(posEl);
+        if (dateInp) resortTradeTable(posEl);
         updatePositionHead(posEl);
       }
       refreshSummaries();

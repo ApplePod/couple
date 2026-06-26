@@ -1788,13 +1788,62 @@
     .pf-col.sn { border-top-color: var(--main); }
     .pf-col-head {
       display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 8px;
+      flex-direction: column;
+      gap: 6px;
       margin-bottom: 12px;
     }
+    .pf-col-head-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
     .pf-col-head h3 { font-size: .95rem; font-weight: 800; }
+    .pf-col.yj.edit-mode .pf-edit-btn {
+      border-color: var(--yj);
+      background: var(--yj-glow);
+      color: var(--yj);
+    }
+    .pf-col.sn.edit-mode .pf-edit-btn {
+      border-color: var(--main);
+      background: var(--sn-glow);
+      color: var(--main);
+    }
+    .pf-col.yj .ci-date-pill.has-value {
+      border-color: rgba(74, 124, 184, 0.35);
+      background: linear-gradient(180deg, #fff 0%, var(--yj-glow) 100%);
+    }
+    .pf-col.sn .ci-date-pill.has-value {
+      border-color: rgba(249, 143, 117, 0.4);
+      background: linear-gradient(180deg, #fff 0%, var(--sn-glow) 100%);
+    }
+    .pf-edit-only { display: none !important; }
+    .pf-col.edit-mode .pf-edit-only { display: inline-flex !important; }
+    .pf-trade-act,
+    .pf-trade-act-h { display: none; width: 28px; padding: 0 !important; }
+    .pf-col.edit-mode .pf-trade-act,
+    .pf-col.edit-mode .pf-trade-act-h { display: table-cell; }
+    .pf-col.edit-mode .pf-trade .ci-row-remove {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: static;
+      transform: none;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      border-radius: 6px;
+    }
+    .pf-col.edit-mode .pf-trade .ci-row-remove:hover {
+      color: var(--red);
+      background: rgba(220, 38, 38, .08);
+    }
     .pf-col-summary {
       font-size: .72rem;
       color: var(--muted);
@@ -1890,6 +1939,15 @@
       width: 100%;
       border-collapse: collapse;
       font-size: .74rem;
+      table-layout: fixed;
+    }
+    .pf-trade-table .pf-td-tag { width: 36px; }
+    .pf-trade-table .pf-td-date { width: 76px; }
+    .pf-trade-table .pf-td-price { width: 72px; }
+    .pf-trade-table .pf-td-shares { width: 44px; }
+    .pf-trade-date-wrap {
+      width: 76px;
+      justify-self: center;
     }
     .pf-lot-table th {
       text-align: left;
@@ -1899,40 +1957,48 @@
       padding: 6px 4px;
       border-bottom: 1px solid var(--border);
     }
-    .pf-lot-table td { padding: 6px 4px; vertical-align: middle; }
-    .pf-lot-table .pf-broker,
-    .pf-lot-table .pf-trade-date,
-    .pf-lot-table .pf-price,
-    .pf-lot-table .pf-shares,
-    .pf-lot-table .pf-date {
+    .pf-lot-table th:nth-child(6),
+    .pf-lot-total { text-align: right; }
+    .pf-lot-table td { padding: 5px 3px; vertical-align: middle; }
+    .pf-lot-table .pf-broker {
       width: 100%;
       min-width: 0;
-      padding: 6px 8px;
+      padding: 5px 6px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .68rem;
+      background: var(--surface);
+      box-sizing: border-box;
+    }
+    .pf-lot-table .pf-price,
+    .pf-lot-table .pf-shares {
+      width: 100%;
+      min-width: 0;
+      padding: 5px 6px;
       border: 1px solid var(--border);
       border-radius: 8px;
       font-family: inherit;
       font-size: .74rem;
       background: var(--surface);
       box-sizing: border-box;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
     }
-    .pf-lot-table .pf-trade-date { padding: 5px 6px; }
+    .pf-lot-table .pf-shares {
+      font-size: .72rem;
+      padding: 5px 4px;
+    }
     .pf-lot-total {
-      font-weight: 700;
+      font-weight: 800;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
-      font-size: .72rem;
+      font-size: .76rem;
+      color: var(--text);
+      padding-right: 2px !important;
     }
-    .pf-lot-remove {
-      width: 24px;
-      height: 24px;
-      border: none;
-      background: var(--red-dim);
-      color: var(--red);
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: .95rem;
-      line-height: 1;
-    }
+    .pf-trade-sell .pf-lot-total { color: var(--red); }
+    .pf-trade-buy .pf-lot-total { color: var(--yj); }
     .pf-pos-actions {
       display: flex;
       gap: 8px;
@@ -1986,25 +2052,14 @@
     .pf-trade-sell { border-left: 2px solid var(--red); }
     .pf-trade-tag {
       display: inline-block;
-      font-size: .62rem;
+      font-size: .58rem;
       font-weight: 800;
-      padding: 2px 6px;
+      padding: 2px 4px;
       border-radius: 4px;
       white-space: nowrap;
     }
     .pf-trade-tag.buy { color: var(--yj); background: var(--yj-glow); }
     .pf-trade-tag.sell { color: var(--red); background: var(--red-dim); }
-    .pf-trade-remove {
-      width: 24px;
-      height: 24px;
-      border: none;
-      background: var(--red-dim);
-      color: var(--red);
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: .95rem;
-      line-height: 1;
-    }
     .pf-warn {
       font-size: .72rem;
       color: var(--red);
