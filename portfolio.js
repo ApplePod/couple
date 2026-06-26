@@ -9,6 +9,11 @@ import {
   defaultPortfolio,
 } from "./portfolio-store.js";
 import { attachSymbolAutocomplete } from "./symbol-search.js";
+import {
+  renderPortfolioDashboard,
+  renderPersonChart,
+  updatePortfolioCharts,
+} from "./portfolio-charts.js";
 
 export const BROKERS = [
   "한국투자증권",
@@ -89,24 +94,6 @@ function calcPersonSummary(positions) {
   return { positionCount, totalCost, totalShares };
 }
 
-function calcHouseholdSummary(data) {
-  const yj = calcPersonSummary(data.yj?.positions);
-  const sn = calcPersonSummary(data.sn?.positions);
-  const keys = new Set();
-  for (const person of ["yj", "sn"]) {
-    for (const pos of data[person]?.positions || []) {
-      const k = pos.code || pos.symbol || pos.id;
-      if (pos.symbol?.trim() || (pos.lots || []).length) keys.add(k);
-    }
-  }
-  return {
-    symbolCount: keys.size,
-    totalCost: yj.totalCost + sn.totalCost,
-    totalShares: yj.totalShares + sn.totalShares,
-    yj,
-    sn,
-  };
-}
 
 function brokerOptions(selected) {
   return BROKERS.map(
@@ -186,30 +173,9 @@ function renderPersonColumn(person, label, colorClass, data, renderSymbolInput) 
         <span>투자원금 <strong>${summary.totalCost ? fmtWon(summary.totalCost) : "—"}</strong></span>
       </div>
     </div>
+    ${renderPersonChart(person, label, data.positions)}
     <div class="pf-positions">${positions || '<p class="pf-empty">등록된 종목이 없습니다.</p>'}</div>
     <button type="button" class="pf-add-pos" data-person="${person}">+ 종목 추가</button>
-  </div>`;
-}
-
-function renderHouseholdCard(data) {
-  const h = calcHouseholdSummary(data);
-  return `<div class="pf-household-card">
-    <div class="pf-household-label">가구 전체 포트폴리오</div>
-    <div class="pf-household-grid">
-      <div class="pf-hw-item">
-        <div class="pf-hw-val">${h.symbolCount || "—"}</div>
-        <div class="pf-hw-lbl">보유 종목</div>
-      </div>
-      <div class="pf-hw-item highlight">
-        <div class="pf-hw-val">${h.totalCost ? fmtWon(h.totalCost) : "—"}</div>
-        <div class="pf-hw-lbl">총 투자원금</div>
-      </div>
-      <div class="pf-hw-item">
-        <div class="pf-hw-val">${h.yj.positionCount} / ${h.sn.positionCount}</div>
-        <div class="pf-hw-lbl">영재 / 시온 종목 수</div>
-      </div>
-    </div>
-    <p class="pf-hw-note">평단·원금은 매수 내역 기준 자동 계산 · 시세 연동은 추후 추가 예정</p>
   </div>`;
 }
 
@@ -307,11 +273,6 @@ function updateLotTotal(row) {
 function refreshSummaries() {
   const section = document.getElementById("portfolio-section");
   if (!section) return;
-  const h = calcHouseholdSummary(portfolioData);
-  const hwVals = section.querySelectorAll(".pf-household-card .pf-hw-item .pf-hw-val");
-  if (hwVals[0]) hwVals[0].textContent = String(h.symbolCount || "—");
-  if (hwVals[1]) hwVals[1].textContent = h.totalCost ? fmtWon(h.totalCost) : "—";
-  if (hwVals[2]) hwVals[2].textContent = `${h.yj.positionCount} / ${h.sn.positionCount}`;
   for (const person of ["yj", "sn"]) {
     const col = section.querySelector(`.pf-col.${person}`);
     if (!col) continue;
@@ -320,6 +281,7 @@ function refreshSummaries() {
     if (strongs[0]) strongs[0].textContent = String(s.positionCount);
     if (strongs[1]) strongs[1].textContent = s.totalCost ? fmtWon(s.totalCost) : "—";
   }
+  updatePortfolioCharts(section, portfolioData);
 }
 
 export function renderPortfolioPage(renderSymbolInput) {
@@ -337,7 +299,7 @@ export function renderPortfolioPage(renderSymbolInput) {
       <h2>💼 투자 포트폴리오</h2>
       ${syncStatus}
     </div>
-    ${renderHouseholdCard(portfolioData)}
+    ${renderPortfolioDashboard(portfolioData)}
     <div class="pf-dual">
       ${renderPersonColumn("yj", "영재", "yj", portfolioData.yj, renderSymbolInput)}
       ${renderPersonColumn("sn", "시온", "sn", portfolioData.sn, renderSymbolInput)}
