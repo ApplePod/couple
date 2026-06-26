@@ -304,7 +304,25 @@ function renderTradeRow(person, posId, trade) {
   </div>`;
 }
 
-function formatPnl(n) {
+function marketLabel(market) {
+  const m = String(market || "").toUpperCase();
+  if (m === "US" || m === "NASDAQ" || m === "NYSE" || m === "AMEX") return "미국";
+  if (m === "KOSDAQ") return "코스닥";
+  if (m === "KOSPI") return "코스피";
+  if (m === "ETF") return "ETF";
+  return "";
+}
+
+function marketBadgeHtml(market) {
+  const label = marketLabel(market);
+  if (!label) return "";
+  const m = String(market || "").toUpperCase();
+  let kind = "kr";
+  if (isUsMarket(market)) kind = "us";
+  else if (m === "KOSDAQ") kind = "kosdaq";
+  else if (m === "ETF") kind = "etf";
+  return `<span class="pf-market-badge ${kind}">${esc(label)}</span>`;
+}
   if (!n && n !== 0) return "—";
   const sign = n > 0 ? "+" : "";
   return `${sign}${Math.round(n).toLocaleString("ko-KR")}원`;
@@ -317,18 +335,16 @@ function renderPosition(person, pos, renderSymbolInput) {
     pos.lots = [{ id: uid("lot"), broker: BROKERS[0], date: "", price: "", shares: "" }];
   }
   const trades = mergeTrades(pos);
-  const meta = pos.code
-    ? `<span class="pf-code">${esc(pos.code)}</span><span class="pf-market">${esc(pos.market || "")}</span>`
-    : "";
+  const meta = marketBadgeHtml(pos.market);
   const usHint = isUsMarket(pos.market)
-    ? `<span class="pf-us-hint">USD 매매 · 원화 환산</span>`
+    ? `<span class="pf-us-hint">달러 매매 · 원화 환산</span>`
     : "";
 
   return `<div class="pf-position${open ? " is-open" : ""}" data-person="${person}" data-pos-id="${esc(pos.id)}">
     <button type="button" class="pf-pos-head" aria-expanded="${open}">
       <div class="pf-pos-head-left">
         <span class="pf-pos-symbol">${esc(pos.symbol || "종목 미입력")}</span>
-        ${meta}
+        ${meta ? `<span class="pf-pos-meta">${meta}</span>` : ""}
       </div>
       <div class="pf-pos-head-stats">
         ${renderPositionHeadStats(pos, stats)}
@@ -459,6 +475,13 @@ function updatePositionHead(posEl) {
   if (!head) return;
   const symEl = head.querySelector(".pf-pos-symbol");
   if (symEl) symEl.textContent = pos.symbol || "종목 미입력";
+  const metaWrap = head.querySelector(".pf-pos-meta");
+  const badge = marketBadgeHtml(pos.market);
+  if (metaWrap) metaWrap.innerHTML = badge;
+  else if (badge) {
+    const left = head.querySelector(".pf-pos-head-left");
+    left?.insertAdjacentHTML("beforeend", `<span class="pf-pos-meta">${badge}</span>`);
+  } else metaWrap?.remove();
   const statsEl = head.querySelector(".pf-pos-head-stats");
   if (statsEl) statsEl.innerHTML = renderPositionHeadStats(pos, stats);
   const warn = posEl.querySelector(".pf-warn");

@@ -253,7 +253,7 @@ export function renderAllocationTable(rows, opts = {}) {
             return `<tr>
               <td class="pf-td-name">
                 <span class="pf-legend-dot" style="background:${r.color || SLICE_COLORS[0]}"></span>
-                ${esc(r.label)}${r.code ? `<span class="pf-td-code">${esc(r.code)}</span>` : ""}
+                ${esc(r.label)}
               </td>
               ${showWho ? `<td class="pf-td-who">${esc(who || "—")}</td>` : ""}
               <td class="pf-td-pct">${fmtPct(r.value / total)}</td>

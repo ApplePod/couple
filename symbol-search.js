@@ -277,7 +277,7 @@ function renderList(listEl, items) {
       (s, i) =>
         `<button type="button" class="symbol-ac-item" data-idx="${i}" role="option">
           <span class="symbol-ac-name">${esc(s.name)}</span>
-          <span class="symbol-ac-meta">${esc(s.code)} · ${esc(marketLabel(s.market))}</span>
+          <span class="symbol-ac-meta">${esc(marketLabel(s.market))}</span>
         </button>`
     )
     .join("");
