@@ -30,27 +30,37 @@ function normQ(q) {
   return String(q ?? "").trim();
 }
 
-/** 앞글자부터 일치 (종목명·약명·코드) */
+function fold(s) {
+  return String(s ?? "").toLowerCase();
+}
+
+function investSymbolMatchScore(s, qLower) {
+  const fields = [s.name, s.abbr, s.code, s.eng];
+  let best = 0;
+  for (const f of fields) {
+    const fl = fold(f);
+    if (!fl) continue;
+    if (fl.startsWith(qLower)) best = Math.max(best, 2);
+    else if (fl.includes(qLower)) best = Math.max(best, 1);
+  }
+  return best;
+}
+
+/** 대소문자 무시 · 이름·코드 어디든 포함되면 표시 (앞글자 일치 우선) */
 export function searchKrSymbols(query, limit = MAX_RESULTS) {
   const q = normQ(query);
   if (q.length < MIN_QUERY_LEN || !symbols.length) return [];
-  const qLower = q.toLowerCase();
-  const out = [];
+  const qLower = fold(q);
+  const scored = [];
   for (const s of symbols) {
-    const name = s.name || "";
-    const abbr = s.abbr || "";
-    const code = s.code || "";
-    const eng = (s.eng || "").toLowerCase();
-    const hit =
-      name.startsWith(q) ||
-      abbr.startsWith(q) ||
-      code.startsWith(q) ||
-      (eng && eng.startsWith(qLower));
-    if (!hit) continue;
-    out.push(s);
-    if (out.length >= limit) break;
+    const score = investSymbolMatchScore(s, qLower);
+    if (score > 0) scored.push({ s, score });
   }
-  return out;
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (a.s.name || "").localeCompare(b.s.name || "", "ko");
+  });
+  return scored.slice(0, limit).map((x) => x.s);
 }
 
 function marketLabel(m) {
