@@ -3,7 +3,7 @@
  */
 import { isUsMarket } from "./portfolio-calc.js";
 import { TRACKER_YEARS, MONTH_LABELS } from "./app-period.js";
-import { getMonthTrades, parseTradeDate } from "./portfolio-data.js";
+import { parseTradeDate } from "./portfolio-data.js";
 
 export { parseTradeDate };
 
@@ -44,19 +44,19 @@ function tradeInMonth(dateStr, year, month) {
   return p.year === +year && p.month === +month;
 }
 
-function flattenLedgerTrade(t, person) {
+function flattenTrade(pos, person, type, row) {
   return {
     person,
     personLabel: PERSON_LABEL[person] || person,
-    symbol: t.symbol || t.code || "종목 미입력",
-    code: t.code || "",
-    market: t.market || "",
-    type: t.type === "sell" ? "sell" : "buy",
-    id: t.id,
-    broker: t.broker || "",
-    date: t.date || "",
-    price: t.price,
-    shares: t.shares,
+    symbol: pos.symbol || pos.code || "종목 미입력",
+    code: pos.code || "",
+    market: pos.market || "",
+    type,
+    id: row.id,
+    broker: row.broker || "",
+    date: row.date || "",
+    price: row.price,
+    shares: row.shares,
   };
 }
 
@@ -65,13 +65,23 @@ export function collectMonthTrades(data, year, month) {
   const inMonth = [];
   const undated = [];
   for (const person of ["yj", "sn"]) {
-    for (const t of getMonthTrades(data, year, month, person)) {
-      const flat = flattenLedgerTrade(t, person);
-      const sh = Number(flat.shares) || 0;
-      const pr = Number(flat.price) || 0;
-      if (sh <= 0 && pr <= 0) continue;
-      if (!flat.date) undated.push(flat);
-      else if (tradeInMonth(flat.date, year, month)) inMonth.push(flat);
+    for (const pos of data[person]?.positions || []) {
+      for (const lot of pos.lots || []) {
+        const t = flattenTrade(pos, person, "buy", lot);
+        const sh = Number(t.shares) || 0;
+        const pr = Number(t.price) || 0;
+        if (sh <= 0 && pr <= 0) continue;
+        if (!t.date) undated.push(t);
+        else if (tradeInMonth(t.date, year, month)) inMonth.push(t);
+      }
+      for (const sell of pos.sells || []) {
+        const t = flattenTrade(pos, person, "sell", sell);
+        const sh = Number(t.shares) || 0;
+        const pr = Number(t.price) || 0;
+        if (sh <= 0 && pr <= 0) continue;
+        if (!t.date) undated.push(t);
+        else if (tradeInMonth(t.date, year, month)) inMonth.push(t);
+      }
     }
   }
   inMonth.sort((a, b) => {

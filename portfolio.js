@@ -1,5 +1,5 @@
 /**
- * 투자 포트폴리오 — 월별 ledger 저장 · 상단은 선택 월 입력 · 차트는 전체 합산
+ * 투자 포트폴리오 — 영재/시온 종목별 입력 · 월별 정리는 거래일 기준
  */
 import {
   loadPortfolio,
@@ -8,12 +8,7 @@ import {
   savePortfolioToCloud,
   defaultPortfolio,
 } from "./portfolio-store.js";
-import {
-  normalizePortfolio,
-  aggregatedView,
-  ledgerToMonthPositions,
-  writeMonthPositionsToLedger,
-} from "./portfolio-data.js";
+import { normalizePortfolio } from "./portfolio-data.js";
 import { attachSymbolAutocomplete, lookupSymbol } from "./symbol-search.js";
 import {
   renderPortfolioDashboard,
@@ -74,22 +69,8 @@ function enrichPositionSymbol(pos) {
 
 function enrichPortfolioData(data) {
   const normalized = normalizePortfolio(data);
-  for (const y of Object.keys(normalized.ledger || {})) {
-    for (const m of Object.keys(normalized.ledger[y])) {
-      for (const person of ["yj", "sn"]) {
-        const trades = normalized.ledger[y][m][person]?.trades || [];
-        normalized.ledger[y][m][person].trades = trades.map((t) => {
-          const hit = lookupSymbol(t.symbol, t.code);
-          if (!hit) return t;
-          return {
-            ...t,
-            symbol: t.symbol || hit.name,
-            code: String(t.code || "").trim() || hit.code,
-            market: String(t.market || "").trim() || hit.market,
-          };
-        });
-      }
-    }
+  for (const person of ["yj", "sn"]) {
+    normalized[person].positions = (normalized[person].positions || []).map(enrichPositionSymbol);
   }
   return normalized;
 }
@@ -109,19 +90,6 @@ function pfJson(d) {
 
 function currentPeriod() {
   return periodApi?.getPeriod?.() ?? { year: 2026, month: "7" };
-}
-
-function monthUiData() {
-  const { year, month } = currentPeriod();
-  const raw = ledgerToMonthPositions(portfolioData, year, month);
-  for (const person of ["yj", "sn"]) {
-    raw[person].positions = (raw[person].positions || []).map(enrichPositionSymbol);
-  }
-  return raw;
-}
-
-function viewData() {
-  return aggregatedView(portfolioData);
 }
 
 function uid(prefix) {
@@ -556,14 +524,12 @@ function readPositionFromDom(posEl) {
 function syncFromDom() {
   const section = document.getElementById("portfolio-section");
   if (!section) return;
-  const { year, month } = currentPeriod();
-  const monthView = { yj: { positions: [] }, sn: { positions: [] } };
   for (const person of ["yj", "sn"]) {
-    monthView[person].positions = [...section.querySelectorAll(`.pf-position[data-person="${person}"]`)].map(
+    const positions = [...section.querySelectorAll(`.pf-position[data-person="${person}"]`)].map(
       (el) => readPositionFromDom(el).pos
     );
+    portfolioData[person].positions = positions;
   }
-  writeMonthPositionsToLedger(portfolioData, year, month, monthView);
   schedulePortfolioSave();
 }
 
@@ -636,11 +602,10 @@ function refreshSummaries() {
     if (!col) continue;
     const summaryEl = col.querySelector(".pf-col-summary");
     if (summaryEl) {
-      const ui = monthUiData();
-      summaryEl.innerHTML = renderColSummary(calcPersonSummary(ui[person]?.positions));
+      summaryEl.innerHTML = renderColSummary(calcPersonSummary(portfolioData[person]?.positions));
     }
   }
-  updatePortfolioCharts(section, viewData(), getQuoteState());
+  updatePortfolioCharts(section, portfolioData, getQuoteState());
   refreshPortfolioMonthly();
 }
 
@@ -675,7 +640,7 @@ export function refreshPortfolioMonthly() {
 
 export function onPortfolioPeriodChange() {
   syncFromDom();
-  renderPortfolioPage(window._portfolioRenderSymbolInput);
+  refreshPortfolioMonthly();
 }
 
 export function refreshPortfolioBudget() {
@@ -704,10 +669,10 @@ export function renderPortfolioPage(renderSymbolInput) {
       ${syncStatus}
     </div>
     ${renderQuoteBar()}
-    ${renderPortfolioDashboard(viewData(), getQuoteState())}
+    ${renderPortfolioDashboard(portfolioData, getQuoteState())}
     <div class="pf-dual">
-      ${renderPersonColumn("yj", "영재", "yj", monthUiData().yj, renderSymbolInput)}
-      ${renderPersonColumn("sn", "시온", "sn", monthUiData().sn, renderSymbolInput)}
+      ${renderPersonColumn("yj", "영재", "yj", portfolioData.yj, renderSymbolInput)}
+      ${renderPersonColumn("sn", "시온", "sn", portfolioData.sn, renderSymbolInput)}
     </div>
     ${renderMonthlyBlock()}`;
 
@@ -772,9 +737,6 @@ function attachPortfolioEvents(section, renderSymbolInput) {
     const addPos = e.target.closest(".pf-add-pos");
     if (addPos) {
       const person = addPos.dataset.person;
-      syncFromDom();
-      const { year, month } = currentPeriod();
-      const monthView = ledgerToMonthPositions(portfolioData, year, month);
       const newPos = {
         id: uid("pos"),
         symbol: "",
@@ -783,8 +745,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
         lots: [{ id: uid("lot"), broker: BROKERS[0], date: "", price: "", shares: "" }],
         sells: [],
       };
-      monthView[person].positions.push(newPos);
-      writeMonthPositionsToLedger(portfolioData, year, month, monthView);
+      portfolioData[person].positions.push(newPos);
       expandedIds.add(newPos.id);
       schedulePortfolioSave();
       renderPortfolioPage(renderSymbolInput);
@@ -795,13 +756,9 @@ function attachPortfolioEvents(section, renderSymbolInput) {
     if (addLot) {
       const person = addLot.dataset.person;
       const posId = addLot.dataset.posId;
-      syncFromDom();
-      const { year, month } = currentPeriod();
-      const monthView = ledgerToMonthPositions(portfolioData, year, month);
-      const pos = monthView[person]?.positions?.find((p) => p.id === posId);
+      const pos = portfolioData[person]?.positions?.find((p) => p.id === posId);
       if (!pos) return;
       pos.lots.push({ id: uid("lot"), broker: BROKERS[0], date: "", price: "", shares: "" });
-      writeMonthPositionsToLedger(portfolioData, year, month, monthView);
       expandedIds.add(posId);
       schedulePortfolioSave();
       renderPortfolioPage(renderSymbolInput);
@@ -812,14 +769,10 @@ function attachPortfolioEvents(section, renderSymbolInput) {
     if (addSell) {
       const person = addSell.dataset.person;
       const posId = addSell.dataset.posId;
-      syncFromDom();
-      const { year, month } = currentPeriod();
-      const monthView = ledgerToMonthPositions(portfolioData, year, month);
-      const pos = monthView[person]?.positions?.find((p) => p.id === posId);
+      const pos = portfolioData[person]?.positions?.find((p) => p.id === posId);
       if (!pos) return;
       if (!pos.sells) pos.sells = [];
       pos.sells.push({ id: uid("sell"), broker: BROKERS[0], date: "", price: "", shares: "" });
-      writeMonthPositionsToLedger(portfolioData, year, month, monthView);
       expandedIds.add(posId);
       schedulePortfolioSave();
       renderPortfolioPage(renderSymbolInput);
@@ -830,11 +783,7 @@ function attachPortfolioEvents(section, renderSymbolInput) {
     if (rmPos) {
       const person = rmPos.dataset.person;
       const posId = rmPos.dataset.posId;
-      syncFromDom();
-      const { year, month } = currentPeriod();
-      const monthView = ledgerToMonthPositions(portfolioData, year, month);
-      monthView[person].positions = monthView[person].positions.filter((p) => p.id !== posId);
-      writeMonthPositionsToLedger(portfolioData, year, month, monthView);
+      portfolioData[person].positions = portfolioData[person].positions.filter((p) => p.id !== posId);
       expandedIds.delete(posId);
       schedulePortfolioSave();
       renderPortfolioPage(renderSymbolInput);
@@ -852,14 +801,11 @@ function attachPortfolioEvents(section, renderSymbolInput) {
         if (!posEl.querySelectorAll(".pf-trade").length) {
           const person = posEl.dataset.person;
           const posId = posEl.dataset.posId;
-          const { year, month } = currentPeriod();
-          const monthView = ledgerToMonthPositions(portfolioData, year, month);
-          const pos = monthView[person]?.positions?.find((p) => p.id === posId);
+          const pos = portfolioData[person]?.positions?.find((p) => p.id === posId);
           const lot = { id: uid("lot"), broker: BROKERS[0], date: "", price: "", shares: "" };
           if (pos) {
             pos.lots = [lot];
             pos.sells = [];
-            writeMonthPositionsToLedger(portfolioData, year, month, monthView);
           }
           const list = posEl.querySelector(".pf-trade-list");
           list?.insertAdjacentHTML(
@@ -929,12 +875,12 @@ export function initPortfolioModule(renderSymbolInput, storeMode, api = {}) {
   portfolioData = enrichPortfolioData(loadPortfolio());
   lastCloudJson = pfJson(portfolioData);
   renderPortfolioPage(renderSymbolInput);
-  startPortfolioQuotes(() => viewData(), refreshQuoteUI);
+  startPortfolioQuotes(() => portfolioData, refreshQuoteUI);
 }
 
 export function setPortfolioFromRemote(remote, meta = {}) {
   if (meta.source === "initial") {
-    portfolioData = enrichPortfolioData(remote?.ledger || remote?.yj ? remote : defaultPortfolio());
+    portfolioData = enrichPortfolioData(remote?.yj || remote?.ledger ? remote : defaultPortfolio());
     lastCloudJson = pfJson(portfolioData);
     persistPortfolioLocal(portfolioData);
     renderPortfolioPage(window._portfolioRenderSymbolInput);

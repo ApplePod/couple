@@ -1,6 +1,6 @@
 /**
- * 포트폴리오 저장 — 년·월별 ledger (체크리스트와 동일한 끊김)
- * { ledger: { "2026": { "7": { yj: { trades: [] }, sn: { trades: [] } } } } }
+ * 포트폴리오 저장 — 종목별 positions (yj/sn) 가 기준
+ * 예전 ledger 데이터는 불러올 때 자동으로 positions 로 복구
  */
 
 export function parseTradeDate(dateStr) {
@@ -11,38 +11,11 @@ export function parseTradeDate(dateStr) {
 }
 
 export function defaultPortfolio() {
-  return { ledger: {} };
+  return { yj: { positions: [] }, sn: { positions: [] } };
 }
 
-export function ensureMonth(data, year, month) {
-  const y = String(year);
-  const m = String(+month);
-  if (!data.ledger) data.ledger = {};
-  if (!data.ledger[y]) data.ledger[y] = {};
-  if (!data.ledger[y][m]) {
-    data.ledger[y][m] = { yj: { trades: [] }, sn: { trades: [] } };
-  }
-  if (!data.ledger[y][m].yj) data.ledger[y][m].yj = { trades: [] };
-  if (!data.ledger[y][m].sn) data.ledger[y][m].sn = { trades: [] };
-  if (!Array.isArray(data.ledger[y][m].yj.trades)) data.ledger[y][m].yj.trades = [];
-  if (!Array.isArray(data.ledger[y][m].sn.trades)) data.ledger[y][m].sn.trades = [];
-  return data.ledger[y][m];
-}
-
-export function getMonthBucket(data, year, month) {
-  const y = String(year);
-  const m = String(+month);
-  return data.ledger?.[y]?.[m] ?? { yj: { trades: [] }, sn: { trades: [] } };
-}
-
-export function getMonthTrades(data, year, month, person) {
-  return getMonthBucket(data, year, month)[person]?.trades ?? [];
-}
-
-export function setMonthTrades(data, year, month, person, trades) {
-  const bucket = ensureMonth(data, year, month);
-  bucket[person].trades = trades;
-  return data;
+function legacyHasData(raw) {
+  return (raw?.yj?.positions?.length || 0) > 0 || (raw?.sn?.positions?.length || 0) > 0;
 }
 
 export function hasLedgerData(data) {
@@ -54,8 +27,8 @@ export function hasLedgerData(data) {
   return false;
 }
 
-function legacyHasData(raw) {
-  return (raw?.yj?.positions?.length || 0) > 0 || (raw?.sn?.positions?.length || 0) > 0;
+export function hasPortfolioData(data) {
+  return legacyHasData(data) || hasLedgerData(data);
 }
 
 function fallbackYearMonth(dateStr) {
@@ -69,58 +42,22 @@ function toTradeRecord(pos, row, type) {
   const pr = Number(row.price) || 0;
   if (sh <= 0 && pr <= 0 && !row.symbol && !pos.symbol) return null;
   const { year, month } = fallbackYearMonth(row.date);
-  const date =
-    row.date ||
-    `${year}-${String(month).padStart(2, "0")}-01`;
+  const date = row.date || `${year}-${String(month).padStart(2, "0")}-01`;
   return {
-    year,
-    month,
-    trade: {
-      id: row.id || `mig_${type}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      type,
-      symbol: pos.symbol || "",
-      code: pos.code || "",
-      market: pos.market || "",
-      broker: row.broker || "",
-      date,
-      price: row.price ?? "",
-      shares: row.shares ?? "",
-    },
+    id: row.id || `mig_${type}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    type,
+    symbol: pos.symbol || "",
+    code: pos.code || "",
+    market: pos.market || "",
+    broker: row.broker || "",
+    date,
+    price: row.price ?? "",
+    shares: row.shares ?? "",
   };
 }
 
-export function migrateLegacyPositions(raw) {
-  const ledger = {};
-  const data = { ledger };
-
-  for (const person of ["yj", "sn"]) {
-    for (const pos of raw?.[person]?.positions || []) {
-      for (const lot of pos.lots || []) {
-        const rec = toTradeRecord(pos, lot, "buy");
-        if (!rec) continue;
-        ensureMonth(data, rec.year, rec.month)[person].trades.push(rec.trade);
-      }
-      for (const sell of pos.sells || []) {
-        const rec = toTradeRecord(pos, sell, "sell");
-        if (!rec) continue;
-        ensureMonth(data, rec.year, rec.month)[person].trades.push(rec.trade);
-      }
-    }
-  }
-  return data;
-}
-
-export function normalizePortfolio(raw) {
-  if (!raw || typeof raw !== "object") return defaultPortfolio();
-  if (raw.ledger && typeof raw.ledger === "object") {
-    return { ledger: structuredClone(raw.ledger) };
-  }
-  if (legacyHasData(raw)) return migrateLegacyPositions(raw);
-  return defaultPortfolio();
-}
-
-/** 전체 월 매매 → 종목별 보유 (도넛·시세·손익용) */
-export function aggregatePositions(data) {
+/** ledger → 종목별 positions (데이터 복구용) */
+export function ledgerToPositions(data) {
   const byPerson = { yj: new Map(), sn: new Map() };
 
   for (const y of Object.keys(data.ledger || {})) {
@@ -128,14 +65,18 @@ export function aggregatePositions(data) {
       for (const person of ["yj", "sn"]) {
         const map = byPerson[person];
         for (const t of data.ledger[y][m][person]?.trades || []) {
-          const code = String(t.code || "").trim();
+          const sh = Number(t.shares) || 0;
+          const pr = Number(t.price) || 0;
           const symbol = String(t.symbol || "").trim();
+          const code = String(t.code || "").trim();
+          if (sh <= 0 && pr <= 0 && !symbol && !code) continue;
+
           const key = code || symbol || t.id;
           if (!key) continue;
 
           if (!map.has(key)) {
             map.set(key, {
-              id: `agg_${person}_${key}`,
+              id: `pos_${person}_${key}`,
               symbol: symbol || code,
               code,
               market: t.market || "",
@@ -168,8 +109,23 @@ export function aggregatePositions(data) {
   };
 }
 
-export function aggregatedView(data) {
-  return aggregatePositions(data);
+export function normalizePortfolio(raw) {
+  if (!raw || typeof raw !== "object") return defaultPortfolio();
+
+  // 1) 예전 방식 — 종목 목록이 있으면 그대로 사용
+  if (legacyHasData(raw)) {
+    return {
+      yj: { positions: structuredClone(raw.yj?.positions || []) },
+      sn: { positions: structuredClone(raw.sn?.positions || []) },
+    };
+  }
+
+  // 2) ledger 만 남아 있으면 positions 로 복구
+  if (raw.ledger && hasLedgerData(raw)) {
+    return ledgerToPositions(raw);
+  }
+
+  return defaultPortfolio();
 }
 
 export function defaultTradeDate(year, month) {
@@ -180,93 +136,4 @@ export function defaultTradeDate(year, month) {
     return now.toISOString().slice(0, 10);
   }
   return `${y}-${String(m).padStart(2, "0")}-15`;
-}
-
-function positionKey(t) {
-  const code = String(t.code || "").trim();
-  const symbol = String(t.symbol || "").trim();
-  return code || symbol || t.id;
-}
-
-function hasTradeContent(row, pos) {
-  const sh = Number(row.shares) || 0;
-  const pr = Number(row.price) || 0;
-  return sh > 0 || pr > 0 || pos.symbol?.trim() || row.broker || row.date;
-}
-
-/** ledger[년][월] → 종목별 lots/sells (상단 입력 UI용) */
-export function ledgerToMonthPositions(data, year, month) {
-  const result = { yj: { positions: [] }, sn: { positions: [] } };
-  for (const person of ["yj", "sn"]) {
-    const map = new Map();
-    for (const t of getMonthTrades(data, year, month, person)) {
-      const key = positionKey(t);
-      if (!key) continue;
-      if (!map.has(key)) {
-        map.set(key, {
-          id: `pos_${person}_${key}`,
-          symbol: String(t.symbol || "").trim(),
-          code: String(t.code || "").trim(),
-          market: t.market || "",
-          lots: [],
-          sells: [],
-        });
-      }
-      const pos = map.get(key);
-      if (t.symbol) pos.symbol = pos.symbol || t.symbol;
-      if (t.code) pos.code = pos.code || t.code;
-      if (t.market) pos.market = pos.market || t.market;
-      const row = {
-        id: t.id,
-        broker: t.broker || "",
-        date: t.date || "",
-        price: t.price ?? "",
-        shares: t.shares ?? "",
-      };
-      if (t.type === "sell") pos.sells.push(row);
-      else pos.lots.push(row);
-    }
-    result[person].positions = [...map.values()];
-  }
-  return result;
-}
-
-/** 종목별 UI → ledger[년][월] trades */
-export function writeMonthPositionsToLedger(data, year, month, monthPositions) {
-  for (const person of ["yj", "sn"]) {
-    const trades = [];
-    for (const pos of monthPositions[person]?.positions || []) {
-      const base = {
-        symbol: pos.symbol || "",
-        code: pos.code || "",
-        market: pos.market || "",
-      };
-      for (const lot of pos.lots || []) {
-        if (!hasTradeContent(lot, pos)) continue;
-        trades.push({
-          id: lot.id || `lot_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          type: "buy",
-          ...base,
-          broker: lot.broker || "",
-          date: lot.date || "",
-          price: lot.price ?? "",
-          shares: lot.shares ?? "",
-        });
-      }
-      for (const sell of pos.sells || []) {
-        if (!hasTradeContent(sell, pos)) continue;
-        trades.push({
-          id: sell.id || `sell_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          type: "sell",
-          ...base,
-          broker: sell.broker || "",
-          date: sell.date || "",
-          price: sell.price ?? "",
-          shares: sell.shares ?? "",
-        });
-      }
-    }
-    setMonthTrades(data, year, month, person, trades);
-  }
-  return data;
 }

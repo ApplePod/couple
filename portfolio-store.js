@@ -22,7 +22,7 @@ function isConfigured() {
 import {
   defaultPortfolio,
   normalizePortfolio,
-  hasLedgerData,
+  hasPortfolioData,
 } from "./portfolio-data.js";
 
 export { defaultPortfolio };
@@ -121,23 +121,27 @@ export async function initPortfolioStore(onRemoteChange) {
     if (error) console.warn("[portfolio] Supabase load:", error.message);
     else if (data?.checks) {
       const remote = data.checks;
-      const local = loadPortfolio();
+      const normalizedRemote = normalizePortfolio(remote);
+      const local = normalizePortfolio(JSON.parse(localStorage.getItem(LS_KEY) || "null"));
       const dirty = isDirty();
 
-      if (dirty && hasLedgerData(local)) {
+      if (dirty && hasPortfolioData(local)) {
         persistPortfolioLocal(local);
         clearPortfolioDirty();
         onRemoteChange?.(local, { source: "initial" });
         savePortfolioToCloud(local);
       } else {
-        persistPortfolioLocal(remote);
+        persistPortfolioLocal(normalizedRemote);
         clearPortfolioDirty();
-        setLastSyncedPortfolio(remote);
-        onRemoteChange?.(remote, { source: "initial" });
+        setLastSyncedPortfolio(normalizedRemote);
+        onRemoteChange?.(normalizedRemote, { source: "initial" });
+        if (JSON.stringify(normalizedRemote) !== JSON.stringify(remote)) {
+          savePortfolioToCloud(normalizedRemote);
+        }
       }
     } else {
       const local = loadPortfolio();
-      const hasData = hasLedgerData(local);
+      const hasData = hasPortfolioData(local);
       if (hasData) {
         onRemoteChange?.(local, { source: "initial" });
         savePortfolioToCloud(local);
