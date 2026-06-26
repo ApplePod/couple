@@ -499,7 +499,7 @@
     }
     .living-budget-line .ci-name { grid-area: name; }
     .living-budget-line .ci-plan { grid-area: plan; }
-    .living-budget-line .lb-actual { grid-area: actual; }
+    .living-budget-line .ci-actual { grid-area: actual; }
     .living-budget-line .lb-remove {
       grid-area: rm;
       width: 28px; height: 28px; padding: 0; border: none;
@@ -527,11 +527,7 @@
     .living-budget-add .living-budget-add-btn:hover:not(:disabled) {
       border-color: var(--sn); color: var(--sn);
     }
-    .ci-actual-sum {
-      background: var(--surface2) !important;
-      color: var(--text) !important;
-      cursor: default;
-    }
+    .ci-actual-sum { cursor: default; }
     .detail-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
     .detail-table th {
       text-align: left; font-size: .65rem; color: var(--muted);

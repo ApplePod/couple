@@ -821,7 +821,7 @@ function renderLivingBudgetLines(lines) {
     return `<div class="living-budget-line check-item sub" data-idx="${i}">
       <div class="ci-name"><span class="ci-name-main">${escAttr(ln.category)}</span><small>직접 관리</small></div>
       <div class="ci-plan"><span>계획</span>${plan ? fmtShort(plan) : '—'}</div>
-      <input type="text" class="dl-amount lb-actual" placeholder="실제 금액" inputmode="numeric"
+      <input type="text" class="ci-actual" placeholder="실제 금액" inputmode="numeric"
         value="${formatDetailAmt(ln.amount)}">
       <input type="hidden" class="dl-category" value="${escAttr(ln.category)}">
       <input type="hidden" class="dl-plan" value="${plan}">
@@ -910,7 +910,7 @@ function readDetailFromWrap(detailsEl) {
     const lines = [...detailsEl.querySelectorAll('.living-budget-line')].map((row) => ({
       category: row.querySelector('.dl-category')?.value || '',
       plan: Number(row.querySelector('.dl-plan')?.value) || 0,
-      amount: parseActualInput(row.querySelector('.dl-amount')?.value || ''),
+      amount: parseActualInput(row.querySelector('.ci-actual')?.value || ''),
     }));
     return { type: 'living', lines };
   }
@@ -1366,6 +1366,13 @@ function attachTrackerEvents() {
     }
     const inp = e.target.closest('.ci-actual');
     if (inp) {
+      const livingDetail = inp.closest('.living-budget-details');
+      if (livingDetail) {
+        clearTimeout(livingDetail._detailTimer);
+        livingDetail._detailTimer = setTimeout(() => syncDetailToStore(livingDetail), 400);
+        return;
+      }
+      if (inp.classList.contains('ci-actual-sum')) return;
       const val = parseActualInput(inp.value);
       budgetChecks = setActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id, val);
       updateWalletSummaries();
@@ -1406,6 +1413,17 @@ function attachTrackerEvents() {
     }
     const inp = e.target.closest('.ci-actual');
     if (inp) {
+      if (inp.closest('.living-budget-details')) {
+        const n = parseActualInput(inp.value);
+        inp.value = n ? formatActualInput(n) : '';
+        syncDetailToStore(inp.closest('.item-details'));
+        return;
+      }
+      if (inp.classList.contains('ci-actual-sum')) {
+        const n = getActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id);
+        inp.value = formatActualInput(n);
+        return;
+      }
       const actual = getActual(budgetChecks, trackerYear, trackerMonth, inp.dataset.person, inp.dataset.id);
       inp.value = formatActualInput(actual);
       return;
