@@ -1,5 +1,7 @@
 /** 포트폴리오 시각화 — 도넛·비중·증권사 */
 
+import { calcPosition } from "./portfolio-calc.js";
+
 const PERSON_COLORS = { yj: "#5a8fc9", sn: "#f98f75" };
 const YJ_TINTS = ["#5a8fc9", "#6e9ed4", "#88b1de", "#a4c5e8", "#c2d9f2"];
 const SN_TINTS = ["#f98f75", "#faa18a", "#fbb59f", "#fccab5", "#fddfce"];
@@ -27,36 +29,22 @@ function fmtPct(n) {
   return `${(n * 100).toFixed(1)}%`;
 }
 
-function calcLots(lots) {
-  let totalShares = 0;
-  let totalCost = 0;
-  for (const lot of lots || []) {
-    const sh = Number(lot.shares) || 0;
-    const pr = Number(lot.price) || 0;
-    if (sh > 0 && pr >= 0) {
-      totalShares += sh;
-      totalCost += sh * pr;
-    }
-  }
-  return {
-    totalShares,
-    totalCost,
-    avgPrice: totalShares > 0 ? totalCost / totalShares : 0,
-  };
+function positionStats(pos) {
+  return calcPosition(pos.lots, pos.sells);
 }
 
 /** @returns {{ label, value, meta? }[]} */
 export function getPositionSlices(positions, max = 8) {
   const items = [];
   for (const pos of positions || []) {
-    const stats = calcLots(pos.lots);
-    if (stats.totalCost <= 0) continue;
+    const stats = positionStats(pos);
+    if (stats.remainingCost <= 0) continue;
     const label = pos.symbol?.trim() || pos.code || "미입력";
     items.push({
       label,
-      value: stats.totalCost,
+      value: stats.remainingCost,
       code: pos.code,
-      shares: stats.totalShares,
+      shares: stats.heldShares,
       avgPrice: stats.avgPrice,
     });
   }
@@ -76,7 +64,7 @@ export function getPersonSlices(data) {
 function sumPositions(positions) {
   let t = 0;
   for (const pos of positions || []) {
-    t += calcLots(pos.lots).totalCost;
+    t += positionStats(pos).remainingCost;
   }
   return t;
 }
@@ -86,8 +74,8 @@ export function getHouseholdSymbolSlices(data, max = 10) {
   const map = new Map();
   for (const person of ["yj", "sn"]) {
     for (const pos of data[person]?.positions || []) {
-      const stats = calcLots(pos.lots);
-      if (stats.totalCost <= 0) continue;
+      const stats = positionStats(pos);
+      if (stats.remainingCost <= 0) continue;
       const key = pos.code || pos.symbol?.trim() || pos.id;
       const cur = map.get(key) || {
         label: pos.symbol?.trim() || pos.code || "미입력",
@@ -97,10 +85,10 @@ export function getHouseholdSymbolSlices(data, max = 10) {
         yjCost: 0,
         snCost: 0,
       };
-      cur.value += stats.totalCost;
-      cur.shares += stats.totalShares;
-      if (person === "yj") cur.yjCost += stats.totalCost;
-      else cur.snCost += stats.totalCost;
+      cur.value += stats.remainingCost;
+      cur.shares += Math.max(0, stats.heldShares);
+      if (person === "yj") cur.yjCost += stats.remainingCost;
+      else cur.snCost += stats.remainingCost;
       map.set(key, cur);
     }
   }
@@ -290,7 +278,7 @@ function countHouseholdSymbols(data) {
   const keys = new Set();
   for (const person of ["yj", "sn"]) {
     for (const pos of data[person]?.positions || []) {
-      if (calcLots(pos.lots).totalCost > 0) {
+      if (positionStats(pos).heldShares > 0) {
         keys.add(pos.code || pos.symbol?.trim() || pos.id);
       }
     }
@@ -359,7 +347,7 @@ export function renderPortfolioDashboard(data) {
       <h4 class="pf-chart-title">종목 상세 · 가구 합산</h4>
       ${renderAllocationTable(symbolSlices, { showWho: true })}
     </div>
-    <p class="pf-hw-note">투자원금·평단은 매수 내역 기준 · 평가금액·수익률은 시세 연동 후 표시</p>
+    <p class="pf-hw-note">잔여원금·평단은 매수−매도 기준(평단법) · 평가금액·수익률은 시세 연동 후 표시</p>
   </div>`;
 }
 
