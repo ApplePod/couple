@@ -423,7 +423,7 @@ function renderPersonBuyCard(title, slices, splitOpts, tone, pnl, hasQuotes) {
       <h4 class="pf-chart-title">${esc(title)}</h4>
       ${renderChartPnlBadge(pnl, hasQuotes)}
     </div>
-    ${renderChartSplit(slices, splitOpts, tone, { labelsOnly: true })}
+    ${renderChartSplit(slices, splitOpts, tone)}
   </div>`;
 }
 
