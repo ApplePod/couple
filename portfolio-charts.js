@@ -645,7 +645,7 @@ export function renderPortfolioDashboard(data, quoteState) {
       ${renderPersonBuyCard("영재 매수 비중", yjBuySlices, splitOpts, "yj", yjPnl, hasQuotes)}
       ${renderPersonBuyCard("시온 매수 비중", snBuySlices, splitOpts, "sn", snPnl, hasQuotes)}
     </div>
-    <p class="pf-hw-note">도넛은 매수 금액 기준 · 잔여원금·평가손익은 매수−매도(평단법) · 시세는 약 1분 갱신</p>
+    <p class="pf-hw-note">도넛은 매수 금액 기준 · 잔여원금·평가손익은 매수−매도(평단법) · 국내 시세 키움 · 미국·환율 Yahoo · 약 1분 갱신</p>
   </div>`;
 }
 

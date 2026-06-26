@@ -1,5 +1,6 @@
 /**
- * 포트폴리오 시세·환율 — Supabase Edge Function (Yahoo v8 chart) 경유
+ * 포트폴리오 시세·환율 — Supabase Edge Function
+ * 국내: 키움 REST(ka10001) · 미국·환율: Yahoo v8 chart
  */
 import { calcPosition, isUsMarket, positionCurrency } from "./portfolio-calc.js";
 

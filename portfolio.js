@@ -187,6 +187,8 @@ function renderQuoteBar() {
       : qs.error || "시세 조회 실패";
   } else if (qs.status === "loading" && !qs.updatedAt) {
     msg = "시세 불러오는 중…";
+  } else if (qs.status === "ok" && qs.updatedAt) {
+    msg = "국내 키움 · 미국·환율 Yahoo";
   }
   return `<div class="pf-quote-bar ${cls}" data-pf-quote-bar>
     <span class="pf-quote-fx">💱 ${fx}</span>
