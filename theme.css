@@ -2350,10 +2350,68 @@
     .pf-charts-4 .pf-chart-title {
       font-size: .82rem;
       font-weight: 800;
-      margin-bottom: 14px;
+      margin-bottom: 0;
       letter-spacing: -0.03em;
       color: #111827;
     }
+    .pf-chart-head-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .pf-chart-head-row .pf-chart-title {
+      flex: 1;
+      min-width: 0;
+    }
+    .pf-chart-pnl {
+      font-size: .68rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--surface2);
+      color: var(--muted);
+    }
+    .pf-chart-pnl.gain {
+      background: var(--green-dim);
+      color: var(--green);
+    }
+    .pf-chart-pnl.loss {
+      background: var(--red-dim);
+      color: var(--red);
+    }
+    .pf-chart-pnl.flat {
+      background: var(--surface2);
+      color: var(--muted);
+    }
+    .pf-chart-pnl.muted {
+      font-weight: 600;
+      font-size: .62rem;
+    }
+    .pf-legend-pnl .pf-legend-item {
+      gap: 6px;
+    }
+    .pf-legend-pnl .pf-legend-pct {
+      font-size: .66rem;
+      color: var(--muted);
+      font-weight: 600;
+      min-width: 2.6em;
+      text-align: right;
+    }
+    .pf-legend-ret {
+      font-size: .68rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      min-width: 3em;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .pf-legend-ret.gain { color: var(--green); }
+    .pf-legend-ret.loss { color: var(--red); }
     .pf-chart-split {
       display: grid;
       grid-template-columns: 1fr 1.1fr;

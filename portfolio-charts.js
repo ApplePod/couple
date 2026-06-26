@@ -1,7 +1,7 @@
 /** 포트폴리오 시각화 — 도넛·비중 */
 
 import { calcPosition, isUsMarket } from "./portfolio-calc.js";
-import { quoteOptsForPosition, getQuoteState } from "./portfolio-quotes.js";
+import { quoteOptsForPosition, getQuoteState, formatReturnPct } from "./portfolio-quotes.js";
 
 const PERSON_COLORS = { yj: "#5a8fc9", sn: "#f98f75" };
 /** 영재 — 블루 파스텔 */
@@ -135,6 +135,25 @@ export function getAssetTypeSlices(data) {
   }));
 }
 
+function fmtPnlSigned(n) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${Math.round(n).toLocaleString("ko-KR")}원`;
+}
+
+function sumPersonUnrealizedPnl(positions) {
+  let total = 0;
+  let has = false;
+  for (const pos of positions || []) {
+    const s = positionStats(pos);
+    if (s.heldShares > 0 && s.unrealizedPnlKrw != null) {
+      total += s.unrealizedPnlKrw;
+      has = true;
+    }
+  }
+  return has ? total : null;
+}
+
 /** 종목별 매수 금액 */
 export function getBuySlices(positions, max = 8, colorMap = null) {
   const items = [];
@@ -148,6 +167,10 @@ export function getBuySlices(positions, max = 8, colorMap = null) {
       value: cost,
       shares: stats.buyShares,
       avgPrice: stats.avgPrice,
+      returnPct:
+        stats.heldShares > 0 && stats.returnPct != null && Number.isFinite(stats.returnPct)
+          ? stats.returnPct
+          : null,
     });
   }
   items.sort((a, b) => b.value - a.value);
@@ -389,7 +412,26 @@ export function renderDonut(slices, opts = {}) {
   </div>`;
 }
 
-function renderChartSplit(slices, donutOpts = {}, tone = null) {
+function renderChartPnlBadge(pnl, hasQuotes) {
+  if (!hasQuotes) {
+    return `<span class="pf-chart-pnl muted">시세 연동 중</span>`;
+  }
+  if (pnl == null) return "";
+  const cls = pnl > 0 ? "gain" : pnl < 0 ? "loss" : "flat";
+  return `<span class="pf-chart-pnl ${cls}">평가 ${fmtPnlSigned(pnl)}</span>`;
+}
+
+function renderPersonBuyCard(title, slices, splitOpts, tone, pnl, hasQuotes) {
+  return `<div class="pf-chart-card pf-chart-${tone}">
+    <div class="pf-chart-head-row">
+      <h4 class="pf-chart-title">${esc(title)}</h4>
+      ${renderChartPnlBadge(pnl, hasQuotes)}
+    </div>
+    ${renderChartSplit(slices, splitOpts, tone, { showReturn: hasQuotes })}
+  </div>`;
+}
+
+function renderChartSplit(slices, donutOpts = {}, tone = null, legendOpts = {}) {
   const size = donutOpts.size ?? 128;
   const stroke = donutOpts.stroke ?? 22;
   const toneCls = tone ? ` pf-chart-tone-${tone}` : "";
@@ -398,7 +440,7 @@ function renderChartSplit(slices, donutOpts = {}, tone = null) {
       ${renderDonut(slices, { size, stroke, hideCenter: true, gapped: true })}
     </div>
     <div class="pf-chart-legend-col">
-      ${renderLegend(slices, { compact: true })}
+      ${renderLegend(slices, { compact: true, showReturn: legendOpts.showReturn })}
     </div>
   </div>`;
 }
@@ -407,15 +449,27 @@ export function renderLegend(slices, opts = {}) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total <= 0) return "";
   if (opts.compact) {
-    return `<ul class="pf-legend pf-legend-compact">
+    const retCls = opts.showReturn ? " pf-legend-pnl" : "";
+    return `<ul class="pf-legend pf-legend-compact${retCls}">
       ${slices
-        .map(
-          (s, i) => `<li class="pf-legend-item${i === 0 ? " is-top is-active" : ""}" data-seg-idx="${i}">
+        .map((s, i) => {
+          const ret =
+            opts.showReturn && s.returnPct != null
+              ? formatReturnPct(s.returnPct)
+              : opts.showReturn
+                ? "—"
+                : "";
+          const retSpan =
+            opts.showReturn
+              ? `<span class="pf-legend-ret${s.returnPct > 0 ? " gain" : s.returnPct < 0 ? " loss" : ""}">${ret}</span>`
+              : "";
+          return `<li class="pf-legend-item${i === 0 ? " is-top is-active" : ""}" data-seg-idx="${i}">
           <span class="pf-legend-swatch" style="background:${s.color}"></span>
           <span class="pf-legend-label">${esc(s.label)}</span>
           <span class="pf-legend-pct">${fmtPct(s.value / total)}</span>
-        </li>`
-        )
+          ${retSpan}
+        </li>`;
+        })
         .join("")}
     </ul>`;
   }
@@ -544,8 +598,8 @@ export function renderPortfolioDashboard(data, quoteState) {
     }
   }
 
-  const yjBuyTotal = sumSliceValues(yjBuySlices);
-  const snBuyTotal = sumSliceValues(snBuySlices);
+  const yjPnl = sumPersonUnrealizedPnl(data.yj?.positions);
+  const snPnl = sumPersonUnrealizedPnl(data.sn?.positions);
 
   const stats = [
     {
@@ -604,14 +658,8 @@ export function renderPortfolioDashboard(data, quoteState) {
         <h4 class="pf-chart-title">전체 매수 비중</h4>
         ${renderChartSplit(totalBuySlices, splitOpts)}
       </div>
-      <div class="pf-chart-card pf-chart-yj">
-        <h4 class="pf-chart-title">영재 매수 비중</h4>
-        ${renderChartSplit(yjBuySlices, splitOpts, "yj")}
-      </div>
-      <div class="pf-chart-card pf-chart-sn">
-        <h4 class="pf-chart-title">시온 매수 비중</h4>
-        ${renderChartSplit(snBuySlices, splitOpts, "sn")}
-      </div>
+      ${renderPersonBuyCard("영재 매수 비중", yjBuySlices, splitOpts, "yj", yjPnl, hasQuotes)}
+      ${renderPersonBuyCard("시온 매수 비중", snBuySlices, splitOpts, "sn", snPnl, hasQuotes)}
     </div>
     <div class="pf-table-section">
       <h4 class="pf-chart-title">종목 상세 · 매수 합산</h4>
